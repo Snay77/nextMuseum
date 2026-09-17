@@ -1,4 +1,4 @@
-import "lenis/dist/lenis.css";
+import "locomotive-scroll/dist/locomotive-scroll.css";
 import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Footer from "./components/footer";

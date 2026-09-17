@@ -2,45 +2,69 @@
 
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Lenis from "lenis";
+import LocomotiveScroll from "locomotive-scroll";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
+export const LOCOMOTIVE_REFRESH_EVENT = "new-museum:scroll-refresh";
+
 export default function SmoothScroll({ children }) {
-  const lenisRef = useRef(null);
+  const locomotiveRef = useRef(null);
+  const rebuildFrameRef = useRef(null);
   const pathname = usePathname();
 
   useEffect(() => {
-    const lenis = new Lenis({
-      anchors: true,
-      lerp: 0.085,
-      respectReducedMotion: true,
-      smoothWheel: true,
-      stopInertiaOnNavigate: true,
-    });
+    const createLocomotive = () => {
+      const locomotive = new LocomotiveScroll({
+        lenisOptions: {
+          anchors: true,
+          lerp: 0.085,
+          smoothWheel: true,
+          stopInertiaOnNavigate: true,
+        },
+        scrollCallback: ScrollTrigger.update,
+        initCustomTicker: (render) => gsap.ticker.add(render),
+        destroyCustomTicker: (render) => gsap.ticker.remove(render),
+      });
 
-    lenisRef.current = lenis;
+      locomotiveRef.current = locomotive;
+      return locomotive;
+    };
 
-    const updateScrollTrigger = () => ScrollTrigger.update();
-    const updateLenis = (time) => lenis.raf(time * 1000);
+    const rebuildLocomotive = () => {
+      if (rebuildFrameRef.current) {
+        cancelAnimationFrame(rebuildFrameRef.current);
+      }
 
-    lenis.on("scroll", updateScrollTrigger);
-    gsap.ticker.add(updateLenis);
-    gsap.ticker.lagSmoothing(500, 33);
+      rebuildFrameRef.current = requestAnimationFrame(() => {
+        locomotiveRef.current?.destroy();
+        const locomotive = createLocomotive();
 
+        requestAnimationFrame(() => {
+          locomotive.resize();
+          ScrollTrigger.refresh();
+        });
+      });
+    };
+
+    const locomotive = createLocomotive();
     const refreshFrame = requestAnimationFrame(() => {
-      lenis.resize();
+      locomotive.resize();
       ScrollTrigger.refresh();
     });
 
+    window.addEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+
     return () => {
       cancelAnimationFrame(refreshFrame);
-      lenis.off("scroll", updateScrollTrigger);
-      gsap.ticker.remove(updateLenis);
-      lenis.destroy();
-      lenisRef.current = null;
+      if (rebuildFrameRef.current) {
+        cancelAnimationFrame(rebuildFrameRef.current);
+      }
+      window.removeEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+      locomotiveRef.current?.destroy();
+      locomotiveRef.current = null;
     };
   }, []);
 
@@ -48,7 +72,7 @@ export default function SmoothScroll({ children }) {
     const refreshFrame = requestAnimationFrame(() => {
       if (window.location.pathname !== pathname) return;
 
-      lenisRef.current?.resize();
+      locomotiveRef.current?.resize();
       ScrollTrigger.refresh();
     });
 

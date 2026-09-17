@@ -13,17 +13,36 @@ export default async function PaintingsPage() {
   const objects = await getObjects();
 
   return (
-    <main className="min-h-screen px-3 pb-24 pt-8 sm:px-4 sm:pb-36 sm:pt-12">
-      <div className="grid gap-8 border-b border-ink pb-8 lg:grid-cols-[1fr_3fr]">
-        <p className="eyebrow">( Collection permanente )</p>
-        <div>
-          <h1 className="display-type text-[clamp(5rem,16vw,14rem)]">ŒUVRES</h1>
-          <p className="mt-8 max-w-2xl text-xl tracking-[-0.035em] sm:text-3xl">
+    <main className="min-h-screen px-3 pb-24 sm:px-4 sm:pb-36">
+      <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-between overflow-hidden border-b border-ink py-5 sm:min-h-[calc(100svh-4rem)] sm:py-7">
+        <div className="relative z-10 flex items-start justify-between">
+          <p className="eyebrow">( Collection permanente )</p>
+          <p className="eyebrow text-right">
+            {String(objects.length).padStart(2, "0")} œuvres
+            <br />
+            Index 2026
+          </p>
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="display-type pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[44%] select-none text-[clamp(22rem,58vw,54rem)] text-ink/[0.035]"
+        >
+          *
+        </div>
+
+        <h1 className="display-type relative z-10 self-center text-center text-[clamp(5rem,23vw,22rem)]">
+          ŒUVRES
+        </h1>
+
+        <div className="relative z-10 grid gap-8 border-t border-ink pt-3 md:grid-cols-[1fr_1fr]">
+          <p className="eyebrow">Art moderne & contemporain</p>
+          <p className="max-w-2xl text-xl tracking-[-0.04em] sm:text-3xl">
             Des œuvres majeures, des gestes radicaux et des regards qui
             continuent de déplacer le monde.
           </p>
         </div>
-      </div>
+      </section>
 
       <Filter objects={objects} />
     </main>

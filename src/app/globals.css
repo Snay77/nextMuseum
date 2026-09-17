@@ -29,6 +29,9 @@
     background: var(--paper);
     color: var(--ink);
     scroll-behavior: smooth;
+    ::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   body {
@@ -91,6 +94,30 @@
   .intro-grid-line {
     left: calc((var(--line-index) + 0.5) * 10%);
   }
+
+  .artwork-float .artwork-shadow {
+    opacity: 0;
+    transform: translateY(3rem) scale(0.975);
+    box-shadow:
+      0 2.5rem 5.5rem rgba(5, 5, 5, 0.26),
+      0 0.7rem 1.5rem rgba(5, 5, 5, 0.2);
+  }
+
+  .artwork-float.is-inview .artwork-shadow {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition:
+      opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 1.05s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.7s ease;
+  }
+
+  .artwork-float.is-inview .group:hover .artwork-shadow {
+    transform: translateY(0) scale(1.025);
+    box-shadow:
+      0 3.25rem 7rem rgba(5, 5, 5, 0.34),
+      0 0.9rem 1.8rem rgba(5, 5, 5, 0.27);
+  }
 }
 
 @media (max-width: 47.99rem) {
@@ -121,5 +148,10 @@
     animation-iteration-count: 1;
     scroll-behavior: auto;
     transition-duration: 0.01ms;
+  }
+
+  .artwork-float .artwork-shadow {
+    opacity: 1;
+    transform: none;
   }
 }

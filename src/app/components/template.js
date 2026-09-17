@@ -92,7 +92,8 @@ export default function Template({ children }) {
   const setIsFirstRender = useStore((state) => state.setIsFirstRender);
   const setIsIntroComplete = useStore((state) => state.setIsIntroComplete);
 
-  useGSAP( // intro
+  useGSAP(
+    // intro
     () => {
       const transition = transitionRef.current;
       const intro = introRef.current;
@@ -260,7 +261,8 @@ export default function Template({ children }) {
     { scope: rootRef },
   );
 
-  useGSAP( // sortie de page
+  useGSAP(
+    // sortie de page
     () => {
       if (!isTransitionActive || isFirstRender || !destinationUrl) return;
 
@@ -303,7 +305,8 @@ export default function Template({ children }) {
     },
   );
 
-  useGSAP( // entrée de page
+  useGSAP(
+    // entrée de page
     () => {
       if (!isTransitionActive || isFirstRender || !destinationUrl) return;
 
