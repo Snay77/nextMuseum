@@ -27,6 +27,7 @@ const MOBILE_OFFSETS = [
 ];
 
 const DEFAULT_PARALLAX_SPEEDS = [-0.09, 0.12, -0.06, 0.1, -0.12, 0.07];
+const DEFAULT_CAPTION_SHIFTS = [6, -7, 5, -8, 7, -6];
 
 const ORIENTATION_STYLES = {
   landscape: {
@@ -68,11 +69,18 @@ function createRandomMotionSettings(count) {
     const speedMagnitude = 0.055 + Math.random() * 0.075;
     const rotationMagnitude = 1.8 + Math.random() * 2;
     const rotationEnd = rotationDirections[index] * rotationMagnitude;
+    const inwardDirection = index % 2 === 0 ? 1 : -1;
+    const shiftsOutward = Math.random() < 0.25;
+    const captionDirection = shiftsOutward ? -inwardDirection : inwardDirection;
+    const captionMagnitude = shiftsOutward
+      ? 1 + Math.random() * 2
+      : 4 + Math.random() * 6;
 
     return {
       speed: Number((parallaxDirections[index] * speedMagnitude).toFixed(3)),
       rotationStart: Number((-rotationEnd * 0.35).toFixed(2)),
       rotationEnd: Number(rotationEnd.toFixed(2)),
+      captionShift: Number((captionDirection * captionMagnitude).toFixed(2)),
     };
   });
 }
@@ -92,7 +100,7 @@ function ArtworkCaptionContent({ work }) {
   return (
     <div className="grid grid-cols-[1fr_auto] items-start gap-5">
       <div>
-        <h2 className="tight-type text-[clamp(1.65rem,2.6vw,2.65rem)] font-bold">
+        <h2 className="tight-type text-[clamp(1.45rem,2.15vw,2.25rem)] font-bold">
           {work.title}
         </h2>
         <p className="mt-2 text-sm opacity-60">{work.artist}</p>
@@ -110,14 +118,12 @@ function ArtworkCaptionContent({ work }) {
   );
 }
 
-function ArtworkCard({ work, index, onImageReady, speed }) {
+function ArtworkCard({ work, index, onImageReady, speed, captionShift }) {
   const [orientation, setOrientation] = useState("landscape");
   const mediaTweens = useRef(new WeakMap());
   const desktopLayout = DESKTOP_LAYOUTS[index % DESKTOP_LAYOUTS.length];
   const mobileOffset = MOBILE_OFFSETS[index % MOBILE_OFFSETS.length];
   const orientationStyles = ORIENTATION_STYLES[orientation];
-  const captionOffset =
-    index % 2 === 0 ? "-translate-x-[1.5%]" : "translate-x-[1.5%]";
 
   const getMediaTweens = (media) => {
     const existing = mediaTweens.current.get(media);
@@ -221,15 +227,13 @@ function ArtworkCard({ work, index, onImageReady, speed }) {
         </div>
 
         <div className="min-h-32 sm:min-h-36">
-          <div
-            className={`relative z-20 mx-auto ${orientationStyles.caption} ${captionOffset}`}
-          >
-            <div className="relative overflow-hidden border border-ink/15 bg-white shadow-[0_0.8rem_2.25rem_rgba(5,5,5,0.09)]">
-              <span className="pointer-events-none absolute left-0 top-0 h-1 w-[24%] bg-blue" />
-              <span className="pointer-events-none absolute bottom-2 right-2 size-2 border-b border-r border-ink/35" />
-              <div className="pointer-events-none absolute inset-1 border border-ink/[0.05]" />
-
-              <div className="relative px-4 py-4 text-ink sm:px-5 sm:py-5">
+          <div className={`relative z-20 mx-auto ${orientationStyles.caption}`}>
+            <div
+              className="relative border border-ink/15 bg-[#fafaf7] shadow-[0_0.55rem_1.6rem_rgba(5,5,5,0.07)]"
+              style={{ transform: `translate3d(${captionShift}%, 0, 0)` }}
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-ink/75" />
+              <div className="relative px-4 py-4 text-ink sm:px-5 sm:py-[1.125rem]">
                 <ArtworkCaptionContent work={work} />
               </div>
             </div>
@@ -314,6 +318,10 @@ export default function ParallaxGallery({ works }) {
             speed={
               motionSettings?.[index]?.speed ??
               DEFAULT_PARALLAX_SPEEDS[index % DEFAULT_PARALLAX_SPEEDS.length]
+            }
+            captionShift={
+              motionSettings?.[index]?.captionShift ??
+              DEFAULT_CAPTION_SHIFTS[index % DEFAULT_CAPTION_SHIFTS.length]
             }
             onImageReady={handleImageReady}
           />
