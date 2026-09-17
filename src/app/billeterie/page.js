@@ -1,16 +1,40 @@
 import TicketingForm from "../components/ticketingForm";
 
+export const metadata = {
+  title: "Billetterie",
+  description: "Réservez vos billets et préparez votre visite au New Museum.",
+};
+
 export default function TicketingPage() {
   return (
-    <main className="min-h-screen bg-background px-4 py-4 text-foreground lg:px-6">
-      <div className="flex w-full flex-col gap-2">
-        <section className="rounded-3xl bg-foreground p-6 text-background md:p-10 lg:p-14">
-          <p className="mb-3 text-sm uppercase tracking-[0.25em] text-background/70">Visiter le musée</p>
-          <h1 className="max-w-4xl text-5xl font-semibold leading-none md:text-8xl">Billetterie</h1>
-          <p className="mt-6 max-w-xl text-lg text-background/75">Choisissez vos billets et préparez votre visite du New Museum.</p>
-        </section>
-        <TicketingForm />
+    <main className="min-h-screen px-3 pb-24 pt-8 sm:px-4 sm:pb-36 sm:pt-12">
+      <div className="grid gap-8 border-b border-ink pb-8 lg:grid-cols-[1fr_3fr]">
+        <p className="eyebrow">( Réserver sa visite )</p>
+        <div>
+          <h1 className="display-type text-[clamp(4.6rem,15vw,14rem)]">
+            BILLETS
+          </h1>
+          <div className="mt-8 grid gap-8 text-lg sm:grid-cols-2 sm:text-xl">
+            <p className="max-w-lg">
+              Choisissez votre tarif, composez votre visite et venez voir l’art
+              autrement.
+            </p>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="eyebrow mb-2 text-ink/45">Horaires</p>
+                <p>Mar—Dim</p>
+                <p>10h—19h</p>
+              </div>
+              <div>
+                <p className="eyebrow mb-2 text-ink/45">Adresse</p>
+                <p>10 rue du Musée</p>
+                <p>75003 Paris</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+      <TicketingForm />
     </main>
   );
 }

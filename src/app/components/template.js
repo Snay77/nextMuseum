@@ -1,158 +1,497 @@
 "use client";
 
-import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useStore } from "../_lib/store";
 
-const TRANSITION_DEFAULTS = {
-  duration: 1,
-  ease: "expo.inOut",
+const BAND_COUNT = 10;
+const TRANSITION_BANDS = Array.from(
+  { length: BAND_COUNT },
+  (_, index) => `transition-band-${index + 1}`,
+);
+const INTRO_LINES = Array.from(
+  { length: BAND_COUNT },
+  (_, index) => `intro-line-${index + 1}`,
+);
+const STAR_BRANCHES = Array.from({ length: 6 }, (_, index) => index * 60);
+
+const getVisibleBands = (container) =>
+  Array.from(
+    container?.querySelectorAll("[data-transition-band]") ?? [],
+  ).filter((band) => window.getComputedStyle(band).display !== "none");
+
+const setScrollLock = (isLocked) => {
+  const overflow = isLocked ? "hidden" : "";
+
+  document.documentElement.style.overflow = overflow;
+  document.body.style.overflow = overflow;
 };
 
-const setPageRevealState = (target) => {
-  gsap.set(target, {
-    autoAlpha: 1,
-    filter: "brightness(0.6) blur(24px)",
-    scale: 0.9,
-    y: 200,
-    transformOrigin: "top center",
+const getDestinationLabel = (url) => {
+  const pathname = url?.split(/[?#]/)[0] || "/";
+
+  if (pathname === "/") return "ACCUEIL";
+  if (pathname === "/paintings") return "COLLECTION";
+  if (pathname === "/billeterie") return "BILLETTERIE";
+  if (pathname.startsWith("/paintings/")) return "ŒUVRE";
+
+  return "NEW MUSEUM";
+};
+
+const addClosingBands = (timeline, bands, position = 0.05) => {
+  bands.forEach((band, index) => {
+    timeline.to(
+      band,
+      {
+        scaleY: 1,
+        duration: 0.55,
+        ease: "expo.inOut",
+      },
+      position + Math.floor(index / 2) * 0.04,
+    );
+  });
+};
+
+const addOpeningBands = (timeline, bands, position, duration = 0.68) => {
+  const middle = (bands.length - 1) / 2;
+
+  bands.forEach((band, index) => {
+    const distanceFromMiddle = Math.floor(Math.abs(index - middle));
+
+    timeline.to(
+      band,
+      {
+        scaleY: 0,
+        duration,
+        ease: "power4.inOut",
+      },
+      position + distanceFromMiddle * 0.06,
+    );
   });
 };
 
 export default function Template({ children }) {
-  const curtainRef = useRef(null);
+  const rootRef = useRef(null);
+  const transitionRef = useRef(null);
+  const bandsRef = useRef(null);
+  const transitionLabelRef = useRef(null);
+  const introRef = useRef(null);
+  const introTimelineRef = useRef(null);
   const pageRef = useRef(null);
-  const preloaderRef = useRef(null);
-  const {
-    destinationUrl,
-    setDestinationUrl,
-    isTransitionActive,
-    setIsTransitionActive,
-    isFirstRender,
-    setIsFirstRender,
-  } = useStore();
+  const pathname = usePathname();
   const router = useRouter();
+  const destinationUrl = useStore((state) => state.destinationUrl);
+  const setDestinationUrl = useStore((state) => state.setDestinationUrl);
+  const isTransitionActive = useStore((state) => state.isTransitionActive);
+  const setIsTransitionActive = useStore(
+    (state) => state.setIsTransitionActive,
+  );
+  const isFirstRender = useStore((state) => state.isFirstRender);
+  const setIsFirstRender = useStore((state) => state.setIsFirstRender);
+  const setIsIntroComplete = useStore((state) => state.setIsIntroComplete);
 
-  useGSAP(() => {
-    if (isFirstRender) return;
+  useGSAP( // intro
+    () => {
+      const transition = transitionRef.current;
+      const intro = introRef.current;
+      const page = pageRef.current;
+      const bands = getVisibleBands(bandsRef.current);
 
-    gsap.set(curtainRef.current, { opacity: 1 });
-    setPageRevealState(pageRef.current);
+      if (!isFirstRender) {
+        setIsIntroComplete(true);
+        setScrollLock(false);
+        gsap.set(page, { autoAlpha: 1, clearProps: "transform" });
+        gsap.set([transition, intro], {
+          autoAlpha: 0,
+          pointerEvents: "none",
+          visibility: "hidden",
+        });
+        return;
+      }
 
-    const tl = gsap.timeline({ defaults: TRANSITION_DEFAULTS });
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setScrollLock(false);
+        gsap.set(page, { autoAlpha: 1 });
+        gsap.set([transition, intro], {
+          autoAlpha: 0,
+          pointerEvents: "none",
+          visibility: "hidden",
+        });
+        setIsFirstRender(false);
+        setIsIntroComplete(true);
+        return;
+      }
 
-    tl.to(curtainRef.current, {
-      clipPath: "inset(0% 0% 100% 0%)",
-    }).to(
-      pageRef.current,
-      {
-        filter: "brightness(1) blur(0px)",
-        scale: 1,
-        y: 0,
-      },
-      "<0.1",
-    );
-  }, []);
+      const gridLines = intro.querySelectorAll("[data-intro-line]");
+      const logoStrokes = intro.querySelectorAll("[data-logo-stroke]");
+      const starCore = intro.querySelector("[data-star-core]");
+      const starBranches = intro.querySelectorAll("[data-star-branch]");
+      const logo = intro.querySelector("[data-intro-logo]");
+      const skip = intro.querySelector("[data-intro-skip]");
 
-  useGSAP(() => {
-    if (!isTransitionActive) return;
+      setScrollLock(true);
+      gsap.set(page, { autoAlpha: 0 });
+      gsap.set(transition, {
+        autoAlpha: 1,
+        pointerEvents: "none",
+        visibility: "visible",
+      });
+      gsap.set(bands, { scaleY: 1 });
+      gsap.set(gridLines, {
+        autoAlpha: 0,
+        scaleY: 0,
+        transformOrigin: "center center",
+      });
+      gsap.set(logo, { autoAlpha: 0 });
+      gsap.set(logoStrokes, {
+        attr: { "stroke-dasharray": 1, "stroke-dashoffset": 1 },
+      });
+      gsap.set(starCore, { autoAlpha: 0, scale: 0 });
+      gsap.set(starBranches, {
+        autoAlpha: 0,
+        attr: { "stroke-dasharray": 1, "stroke-dashoffset": 1 },
+      });
+      gsap.set(skip, { autoAlpha: 0 });
 
-    gsap.set(curtainRef.current, {
-      clipPath: "inset(100% 0% 0% 0%)",
-      opacity: 1,
-    });
+      const timeline = gsap.timeline();
+      introTimelineRef.current = timeline;
 
-    const tl = gsap.timeline({
-      defaults: TRANSITION_DEFAULTS,
-      onComplete: () => {
-        router.push(destinationUrl);
-        setIsTransitionActive(false);
-        setDestinationUrl("");
-      },
-    });
-
-    tl.to(pageRef.current, {
-      y: -200,
-      filter: "brightness(0.6) blur(24px)",
-      scale: 0.9,
-    }).to(
-      curtainRef.current,
-      {
-        clipPath: "inset(0% 0% 0% 0%)",
-      },
-      "<0.1",
-    );
-  }, [destinationUrl, isTransitionActive]);
-
-  useGSAP(() => {
-    if (!isFirstRender) {
-      gsap.set(preloaderRef.current, { autoAlpha: 0 });
-      return;
-    }
-
-    const lines = Array.from(preloaderRef.current.querySelectorAll("div"));
-
-    gsap.set(lines, {
-      scaleY: 0,
-      opacity: 1,
-      transformOrigin: "top center",
-    });
-
-    const tl = gsap.timeline({
-      onComplete: () => {
-        gsap.to(preloaderRef.current, {
-          opacity: 0,
-          duration: 0.8,
-          ease: "expo.inOut",
-          onComplete: () => {
-            setIsFirstRender(false);
+      timeline
+        .addLabel("grid", 0)
+        .to(gridLines, {
+          autoAlpha: 1,
+          scaleY: 1,
+          duration: 0.65,
+          ease: "power3.inOut",
+          stagger: { each: 0.03, from: "center" },
+        })
+        .to(logo, { autoAlpha: 1, duration: 0.4, ease: "power2.out" }, 0.35)
+        .to(skip, { autoAlpha: 1, duration: 0.24 }, 0.65)
+        .to(
+          logoStrokes,
+          {
+            attr: { "stroke-dashoffset": 0 },
+            duration: 2.2,
+            ease: "power2.inOut",
+            stagger: 0.35,
           },
-        });
+          0.45,
+        )
+        .to(
+          starCore,
+          {
+            autoAlpha: 1,
+            scale: 1,
+            duration: 0.36,
+            ease: "back.out(2)",
+          },
+          2.6,
+        )
+        .to(
+          starBranches,
+          {
+            autoAlpha: 1,
+            attr: { "stroke-dashoffset": 0 },
+            duration: 0.7,
+            ease: "power3.out",
+            stagger: 0.07,
+          },
+          2.82,
+        )
+        .to(
+          logo,
+          {
+            scale: 1.02,
+            duration: 0.22,
+            ease: "power2.out",
+            yoyo: true,
+            repeat: 1,
+          },
+          3.72,
+        )
+        .to(
+          gridLines,
+          { autoAlpha: 0, duration: 0.4, ease: "power2.out" },
+          4.05,
+        )
+        .addLabel("reveal", 4.35)
+        .set(page, { autoAlpha: 1 }, "reveal")
+        .to(
+          intro,
+          { autoAlpha: 0, duration: 0.32, ease: "power2.out" },
+          "reveal",
+        )
+        .to(skip, { autoAlpha: 0, duration: 0.18 }, "reveal")
+        .call(() => setIsFirstRender(false), [], 4.48)
+        .to(
+          logo,
+          {
+            autoAlpha: 0,
+            scale: 1.08,
+            duration: 0.5,
+            ease: "power3.in",
+          },
+          4.18,
+        );
 
-        setPageRevealState(pageRef.current);
+      addOpeningBands(timeline, bands, 4.46, 0.78);
 
-        gsap.to(pageRef.current, {
-          filter: "brightness(1) blur(0px)",
-          scale: 1,
+      timeline
+        .set(
+          [transition, intro],
+          {
+            autoAlpha: 0,
+            pointerEvents: "none",
+            visibility: "hidden",
+          },
+          5.55,
+        )
+        .set(page, { clearProps: "opacity,visibility" }, 5.55)
+        .call(() => setIsIntroComplete(true), [], 5.55)
+        .call(() => setScrollLock(false), [], 5.55);
+
+      return () => {
+        introTimelineRef.current = null;
+        setScrollLock(false);
+      };
+    },
+    { scope: rootRef },
+  );
+
+  useGSAP( // sortie de page
+    () => {
+      if (!isTransitionActive || isFirstRender || !destinationUrl) return;
+
+      const transition = transitionRef.current;
+      const bands = getVisibleBands(bandsRef.current);
+      const label = transitionLabelRef.current;
+      const page = pageRef.current;
+
+      setScrollLock(true);
+      gsap.set(transition, {
+        autoAlpha: 1,
+        pointerEvents: "auto",
+        visibility: "visible",
+      });
+      gsap.set(bands, { scaleY: 0 });
+      gsap.set(label, { autoAlpha: 0 });
+
+      const timeline = gsap.timeline();
+
+      timeline
+        .to(
+          page,
+          {
+            autoAlpha: 0.96,
+            y: -12,
+            duration: 0.56,
+            ease: "power3.inOut",
+          },
+          0.05,
+        )
+        .to(label, { autoAlpha: 1, duration: 0.2 }, 0.5);
+
+      addClosingBands(timeline, bands);
+
+      timeline.call(() => router.push(destinationUrl), [], 0.68);
+    },
+    {
+      dependencies: [destinationUrl, isFirstRender, isTransitionActive],
+      scope: rootRef,
+    },
+  );
+
+  useGSAP( // entrée de page
+    () => {
+      if (!isTransitionActive || isFirstRender || !destinationUrl) return;
+
+      const transition = transitionRef.current;
+      const bands = getVisibleBands(bandsRef.current);
+      const label = transitionLabelRef.current;
+      const page = pageRef.current;
+      const pageTitle = page.querySelector("h1");
+      const timeline = gsap.timeline();
+
+      gsap.set(page, { autoAlpha: 0.96, y: 12 });
+      if (pageTitle) gsap.set(pageTitle, { autoAlpha: 0, y: 24 });
+
+      timeline.to(label, { autoAlpha: 0, duration: 0.22 }, 0.22).to(
+        page,
+        {
+          autoAlpha: 1,
           y: 0,
-          duration: 1,
-          ease: "expo.inOut",
-          delay: 0.1,
-        });
-      },
-    });
+          duration: 0.78,
+          ease: "power3.out",
+        },
+        0.24,
+      );
 
-    tl.to(lines, {
-      scaleY: 1,
-      ease: "expo.inOut",
-      duration: 0.8,
-      stagger: 0.08,
+      addOpeningBands(timeline, bands, 0.3);
+
+      if (pageTitle) {
+        timeline.to(
+          pageTitle,
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.78,
+            ease: "expo.out",
+          },
+          0.48,
+        );
+      }
+
+      timeline
+        .set(transition, {
+          autoAlpha: 0,
+          pointerEvents: "none",
+          visibility: "hidden",
+        })
+        .set([page, pageTitle].filter(Boolean), { clearProps: "all" })
+        .call(() => setScrollLock(false))
+        .call(() => setIsTransitionActive(false))
+        .call(() => setDestinationUrl(""));
+    },
+    {
+      dependencies: [pathname],
+      scope: rootRef,
+    },
+  );
+
+  const skipIntro = () => {
+    const timeline = introTimelineRef.current;
+
+    if (!timeline || timeline.time() >= timeline.labels.reveal) return;
+
+    timeline.tweenTo("reveal", {
+      duration: 0.32,
+      ease: "power3.inOut",
+      onComplete: () => timeline.play(),
     });
-  }, [isFirstRender]);
+  };
 
   return (
-    <>
+    <div ref={rootRef}>
       <div
-        ref={curtainRef}
-        className="fixed top-0 left-0 w-screen h-screen z-15000 bg-white opacity-0 pointer-events-none"
-      />
-      <div
-        ref={preloaderRef}
-        className="fixed top-0 left-0 w-screen h-screen bg-white z-14000 pointer-events-none "
+        ref={transitionRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible fixed inset-0 z-15000 opacity-0"
       >
-        {Array.from({ length: 10 }).map((_, index) => (
-          <div
-            key={index}
-            className="w-px bg-black absolute h-full top-0 opacity-0"
-            style={{ left: `${index * 10}%` }}
-          />
-        ))}
+        <div ref={bandsRef} className="absolute inset-0 overflow-hidden">
+          {TRANSITION_BANDS.map((band, index) => (
+            <span
+              key={band}
+              data-transition-band
+              className="transition-band absolute top-0 h-full bg-ink"
+              style={{
+                "--band-index": index,
+                transformOrigin:
+                  index % 2 === 0 ? "center top" : "center bottom",
+              }}
+            />
+          ))}
+        </div>
+
+        <p
+          ref={transitionLabelRef}
+          className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 font-mono text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[#8e8e8e] opacity-0"
+        >
+          ( {getDestinationLabel(destinationUrl)} )
+          <span className="ml-1.5 text-blue">*</span>
+        </p>
       </div>
-      <div ref={pageRef} className="opacity-0">
-        {children}
+
+      <div
+        ref={introRef}
+        className="fixed inset-0 z-16000 overflow-hidden bg-ink text-paper"
+      >
+        <div className="absolute inset-0" aria-hidden="true">
+          {INTRO_LINES.map((line, index) => (
+            <span
+              key={line}
+              data-intro-line
+              className="intro-grid-line absolute top-0 h-full w-px bg-paper/15 opacity-0"
+              style={{ "--line-index": index }}
+            />
+          ))}
+        </div>
+
+        <svg
+          data-intro-logo
+          className="absolute left-1/2 top-1/2 w-[min(78vw,44rem)] -translate-x-1/2 -translate-y-1/2 overflow-visible opacity-0"
+          viewBox="0 0 560 200"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-label="NM étoile"
+          role="img"
+        >
+          <g
+            stroke="currentColor"
+            strokeWidth="28"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+          >
+            <path
+              data-logo-stroke
+              pathLength="1"
+              strokeDasharray="1"
+              strokeDashoffset="1"
+              d="M 42 160 V 40 L 218 160 V 40"
+            />
+            <path
+              data-logo-stroke
+              pathLength="1"
+              strokeDasharray="1"
+              strokeDashoffset="1"
+              d="M 286 160 V 40 L 374 132 L 462 40 V 160"
+            />
+          </g>
+
+          <g
+            className="text-blue"
+            transform="translate(520 52)"
+            stroke="currentColor"
+            strokeWidth="7"
+            strokeLinecap="round"
+          >
+            <circle
+              data-star-core
+              cx="0"
+              cy="0"
+              r="5"
+              fill="currentColor"
+              stroke="none"
+            />
+            {STAR_BRANCHES.map((angle) => (
+              <line
+                key={angle}
+                data-star-branch
+                pathLength="1"
+                strokeDasharray="1"
+                strokeDashoffset="1"
+                x1="0"
+                y1="-11"
+                x2="0"
+                y2="-34"
+                transform={`rotate(${angle})`}
+              />
+            ))}
+          </g>
+        </svg>
+
+        <button
+          type="button"
+          data-intro-skip
+          onClick={skipIntro}
+          className="eyebrow absolute bottom-5 right-4 z-10 border-b border-paper/50 pb-1 text-paper opacity-0 transition-colors hover:text-blue sm:bottom-7 sm:right-7"
+        >
+          Passer ↘
+        </button>
       </div>
-    </>
+
+      <div ref={pageRef}>{children}</div>
+    </div>
   );
 }

@@ -4,116 +4,109 @@ import Image from "next/image";
 import Link from "next/link";
 import { useQueryState } from "nuqs";
 import { useMemo } from "react";
+import { getWikimediaThumbnail, isWikimediaThumbnail } from "../_lib/paintings";
 import SearchBar from "./searchBar";
-import {
-  getWikimediaThumbnail,
-  isWikimediaThumbnail,
-} from "../_lib/paintings";
+
+const CARD_LAYOUTS = [
+  "md:col-span-7",
+  "md:col-span-5 md:pt-28",
+  "md:col-span-4 md:pt-12",
+  "md:col-span-8",
+];
 
 export default function Filter({ objects }) {
   const [movement, setMovement] = useQueryState("movement");
 
   const movements = useMemo(
     () =>
-      [...new Set(objects.map((object) => object.movement).filter(Boolean))].sort(),
+      [
+        ...new Set(objects.map((object) => object.movement).filter(Boolean)),
+      ].sort(),
     [objects],
   );
 
   const filtered = useMemo(
-    () =>
-      objects.filter((object) => !movement || object.movement === movement),
+    () => objects.filter((object) => !movement || object.movement === movement),
     [objects, movement],
   );
 
   return (
     <>
-      <SearchBar paintings={objects} />
-
-      <div className="mb-10 border-y border-foreground/15 py-5">
-        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-foreground/60">
-          Mouvement artistique
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMovement(null)}
-            aria-pressed={!movement}
-            className={`rounded-full border px-3 py-1 text-sm transition cursor-pointer ${
-              !movement
-                ? "border-foreground bg-foreground text-background"
-                : "border-foreground/20 text-foreground/70 hover:border-foreground"
-            }`}
-          >
-            Tous
-          </button>
-
-          {movements.map((value) => (
+      <div className="grid gap-8 border-b border-ink py-6 lg:grid-cols-[1fr_3fr]">
+        <p className="eyebrow pt-1">Rechercher / filtrer</p>
+        <div>
+          <SearchBar paintings={objects} />
+          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3">
             <button
-              key={value}
               type="button"
-              onClick={() => setMovement(value)}
-              aria-pressed={movement === value}
-              className={`rounded-full border px-3 py-1 text-sm transition cursor-pointer ${
-                movement === value
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-foreground/20 text-foreground/70 hover:border-foreground"
-              }`}
+              onClick={() => setMovement(null)}
+              aria-pressed={!movement}
+              className={`eyebrow cursor-pointer border-b pb-1 transition-opacity hover:opacity-50 ${!movement ? "border-ink" : "border-transparent text-ink/45"}`}
             >
-              {value}
+              Tout ({objects.length})
             </button>
-          ))}
+            {movements.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMovement(value)}
+                aria-pressed={movement === value}
+                className={`eyebrow cursor-pointer border-b pb-1 transition-opacity hover:opacity-50 ${movement === value ? "border-ink" : "border-transparent text-ink/45"}`}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <p className="mb-6 text-sm text-foreground/60">
-        {filtered.length} œuvre{filtered.length !== 1 ? "s" : ""}
-      </p>
+      <div className="flex items-center justify-between py-4">
+        <p className="eyebrow">
+          {filtered.length} résultat{filtered.length !== 1 ? "s" : ""}
+        </p>
+        <p className="eyebrow text-ink/45">Index visuel · 2026</p>
+      </div>
 
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((object) => (
+        <div className="grid gap-x-4 gap-y-16 md:grid-cols-12 md:gap-y-24">
+          {filtered.map((object, index) => (
             <Link
               href={`/paintings/${object.slug}`}
               key={object.id}
               aria-label={`Voir l’œuvre ${object.title}`}
-              className="group overflow-hidden rounded-3xl border border-foreground/10 bg-cream shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+              className={`group block ${CARD_LAYOUTS[index % CARD_LAYOUTS.length]}`}
             >
-              <div className="relative aspect-4/5 overflow-hidden bg-foreground/10">
+              <div
+                className={`relative overflow-hidden bg-line ${index % 3 === 1 ? "aspect-[4/5]" : "aspect-[5/4]"}`}
+              >
                 <Image
                   src={
                     isWikimediaThumbnail(object.image)
-                      ? getWikimediaThumbnail(object.image, 960)
+                      ? getWikimediaThumbnail(object.image, 1280)
                       : object.image
                   }
                   alt={object.title}
                   fill
-                  className="object-cover transition duration-500 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 66vw"
+                  className="object-cover transition duration-700 ease-out group-hover:scale-[1.025]"
                 />
+                <span className="absolute right-2 top-2 grid size-10 place-items-center rounded-full bg-paper text-xl opacity-0 transition-opacity group-hover:opacity-100">
+                  ↗
+                </span>
               </div>
-
-              <div className="p-6">
-                <div className="mb-3 flex items-center justify-between gap-4">
-                  <p className="text-sm text-foreground/60">{object.artist}</p>
-                  <span className="shrink-0 rounded-full bg-bordo px-3 py-1 text-xs text-background">
-                    {object.year}
-                  </span>
+              <div className="grid grid-cols-[1fr_auto] gap-5 border-t border-ink py-2">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-[-0.045em] sm:text-3xl">
+                    {object.title}
+                  </h2>
+                  <p className="mt-1 text-sm text-ink/55">{object.artist}</p>
                 </div>
-
-                <h2 className="mb-3 text-2xl font-semibold text-foreground">
-                  {object.title}
-                </h2>
-
-                <div className="flex flex-wrap gap-2">
+                <div className="text-right">
+                  <p className="eyebrow">{object.year}</p>
                   {object.movement && (
-                    <span className="rounded-full border border-foreground/20 px-3 py-1 text-xs text-foreground/75">
+                    <p className="mt-2 text-xs text-ink/55">
                       {object.movement}
-                    </span>
-                  )}
-                  {object.location && (
-                    <span className="rounded-full border border-foreground/20 px-3 py-1 text-xs text-foreground/75">
-                      {object.location}
-                    </span>
+                    </p>
                   )}
                 </div>
               </div>
@@ -121,9 +114,11 @@ export default function Filter({ objects }) {
           ))}
         </div>
       ) : (
-        <p className="py-16 text-center text-foreground/60">
-          Aucune œuvre ne correspond à ce mouvement.
-        </p>
+        <div className="grid min-h-[45vh] place-items-center border-b border-ink">
+          <p className="tight-type max-w-xl text-center text-4xl font-bold sm:text-6xl">
+            Rien ici — essayez un autre mouvement.
+          </p>
+        </div>
       )}
     </>
   );

@@ -1,24 +1,31 @@
 import { getObjects } from "../_lib/paintings";
 import Filter from "../components/filter";
 
-export default async function Page() {
-    const objects = await getObjects();
+export const metadata = {
+  title: "Collection",
+  description:
+    "Explorez la collection d'art moderne et contemporain du New Museum.",
+};
 
-    return (
-        <main className="min-h-screen bg-background px-6 py-12 text-foreground lg:px-12">
-            <div className="mx-auto max-w-7xl">
-                <div className="mb-10">
-                    <p className="mb-2 text-sm uppercase tracking-[0.25em] text-foreground/60">
-                        Collection
-                    </p>
+export const dynamic = "force-dynamic";
 
-                    <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-                        Les œuvres
-                    </h1>
-                </div>
+export default async function PaintingsPage() {
+  const objects = await getObjects();
 
-                <Filter objects={objects} />
-            </div>
-        </main>
-    );
+  return (
+    <main className="min-h-screen px-3 pb-24 pt-8 sm:px-4 sm:pb-36 sm:pt-12">
+      <div className="grid gap-8 border-b border-ink pb-8 lg:grid-cols-[1fr_3fr]">
+        <p className="eyebrow">( Collection permanente )</p>
+        <div>
+          <h1 className="display-type text-[clamp(5rem,16vw,14rem)]">ŒUVRES</h1>
+          <p className="mt-8 max-w-2xl text-xl tracking-[-0.035em] sm:text-3xl">
+            Des œuvres majeures, des gestes radicaux et des regards qui
+            continuent de déplacer le monde.
+          </p>
+        </div>
+      </div>
+
+      <Filter objects={objects} />
+    </main>
+  );
 }
