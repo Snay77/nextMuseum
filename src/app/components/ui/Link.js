@@ -25,12 +25,15 @@ export default function Link({ href, children, onClick, ...props }) {
         const target = new URL(href, window.location.href);
         const isSameDocumentAnchor =
           target.pathname === pathname && Boolean(target.hash);
+        const isImmersiveNavigation =
+          target.pathname === "/singularity" || pathname === "/singularity";
 
         if (
           isModifiedClick ||
           props.target === "_blank" ||
           target.origin !== window.location.origin ||
-          isSameDocumentAnchor
+          isSameDocumentAnchor ||
+          isImmersiveNavigation
         ) {
           return;
         }

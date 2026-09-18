@@ -2,7 +2,10 @@ import Link from "../ui/Link";
 
 export default function Footer() {
   return (
-    <footer className="bg-ink px-3 pb-3 pt-24 text-paper sm:px-4 sm:pt-36">
+    <footer
+      data-site-footer
+      className="bg-ink px-3 pb-3 pt-24 text-paper sm:px-4 sm:pt-36"
+    >
       <div className="grid gap-12 border-t border-paper/30 pt-4 md:grid-cols-2">
         <h2 className="tight-type max-w-3xl text-[clamp(3.2rem,8vw,8.5rem)] font-bold">
           L’art commence ici.

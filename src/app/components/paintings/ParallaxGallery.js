@@ -29,7 +29,7 @@ const MOBILE_OFFSETS = [
   "left-[2vw]",
 ];
 
-const DEFAULT_PARALLAX_SPEEDS = [-0.09, 0.12, -0.06, 0.1, -0.12, 0.07];
+const DEFAULT_PARALLAX_SPEEDS = [0.09, 0.12, 0.06, 0.1, 0.12, 0.07];
 
 const ORIENTATION_STYLES = {
   landscape: {
@@ -63,7 +63,6 @@ function createRandomDirections(count) {
 }
 
 function createRandomMotionSettings(count) {
-  const parallaxDirections = createRandomDirections(count);
   const rotationDirections = createRandomDirections(count);
 
   return Array.from({ length: count }, (_, index) => {
@@ -72,7 +71,7 @@ function createRandomMotionSettings(count) {
     const rotationEnd = rotationDirections[index] * rotationMagnitude;
 
     return {
-      speed: Number((parallaxDirections[index] * speedMagnitude).toFixed(3)),
+      speed: Number(speedMagnitude.toFixed(3)),
       rotationStart: Number((-rotationEnd * 0.35).toFixed(2)),
       rotationEnd: Number(rotationEnd.toFixed(2)),
     };

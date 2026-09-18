@@ -78,6 +78,7 @@ export default function Template({ children }) {
   const introTimelineRef = useRef(null);
   const pageRef = useRef(null);
   const pathname = usePathname();
+  const isImmersiveRoute = pathname === "/singularity";
   const router = useRouter();
   const destinationUrl = useStore((state) => state.destinationUrl);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
@@ -96,6 +97,19 @@ export default function Template({ children }) {
       const intro = introRef.current;
       const page = pageRef.current;
       const bands = getVisibleBands(bandsRef.current);
+
+      if (isImmersiveRoute) {
+        setScrollLock(false);
+        gsap.set(page, { autoAlpha: 1, clearProps: "all" });
+        gsap.set([transition, intro], {
+          autoAlpha: 0,
+          pointerEvents: "none",
+          visibility: "hidden",
+        });
+        setIsFirstRender(false);
+        setIsIntroComplete(true);
+        return;
+      }
 
       if (!isFirstRender) {
         setIsIntroComplete(true);
@@ -226,13 +240,20 @@ export default function Template({ children }) {
         setScrollLock(false);
       };
     },
-    { scope: rootRef },
+    { scope: rootRef, dependencies: [isImmersiveRoute] },
   );
 
   useGSAP(
     // sortie de page
     () => {
-      if (!isTransitionActive || isFirstRender || !destinationUrl) return;
+      if (
+        isImmersiveRoute ||
+        !isTransitionActive ||
+        isFirstRender ||
+        !destinationUrl
+      ) {
+        return;
+      }
 
       const transition = transitionRef.current;
       const bands = getVisibleBands(bandsRef.current);
@@ -268,7 +289,12 @@ export default function Template({ children }) {
       timeline.call(() => router.push(destinationUrl), [], 0.68);
     },
     {
-      dependencies: [destinationUrl, isFirstRender, isTransitionActive],
+      dependencies: [
+        destinationUrl,
+        isFirstRender,
+        isImmersiveRoute,
+        isTransitionActive,
+      ],
       scope: rootRef,
     },
   );
@@ -276,7 +302,14 @@ export default function Template({ children }) {
   useGSAP(
     // entrée de page
     () => {
-      if (!isTransitionActive || isFirstRender || !destinationUrl) return;
+      if (
+        isImmersiveRoute ||
+        !isTransitionActive ||
+        isFirstRender ||
+        !destinationUrl
+      ) {
+        return;
+      }
 
       const transition = transitionRef.current;
       const bands = getVisibleBands(bandsRef.current);

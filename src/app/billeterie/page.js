@@ -6,6 +6,22 @@ export const metadata = {
   description: "Réservez vos billets et préparez votre visite au New Museum.",
 };
 
+export const dynamic = "force-dynamic";
+
+function getParisDateKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export default function TicketingPage() {
   return (
     <main className="min-h-screen px-3 pb-24 pt-8 sm:px-4 sm:pb-36 sm:pt-12">
@@ -36,7 +52,7 @@ export default function TicketingPage() {
           </div>
         </div>
       </div>
-      <TicketingForm />
+      <TicketingForm initialDate={getParisDateKey()} />
     </main>
   );
 }
