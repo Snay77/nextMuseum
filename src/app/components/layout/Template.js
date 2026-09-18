@@ -4,18 +4,13 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
-import { useStore } from "../_lib/store";
+import { useStore } from "../../_lib/store";
 
 const BAND_COUNT = 10;
 const TRANSITION_BANDS = Array.from(
   { length: BAND_COUNT },
   (_, index) => `transition-band-${index + 1}`,
 );
-const INTRO_LINES = Array.from(
-  { length: BAND_COUNT },
-  (_, index) => `intro-line-${index + 1}`,
-);
-const STAR_BRANCHES = Array.from({ length: 6 }, (_, index) => index * 60);
 
 const getVisibleBands = (container) =>
   Array.from(
@@ -34,6 +29,8 @@ const getDestinationLabel = (url) => {
 
   if (pathname === "/") return "ACCUEIL";
   if (pathname === "/paintings") return "COLLECTION";
+  if (pathname === "/agenda") return "AGENDA";
+  if (pathname === "/contact") return "CONTACT";
   if (pathname === "/billeterie") return "BILLETTERIE";
   if (pathname.startsWith("/paintings/")) return "ŒUVRE";
 
@@ -125,10 +122,8 @@ export default function Template({ children }) {
         return;
       }
 
-      const gridLines = intro.querySelectorAll("[data-intro-line]");
       const logoStrokes = intro.querySelectorAll("[data-logo-stroke]");
-      const starCore = intro.querySelector("[data-star-core]");
-      const starBranches = intro.querySelectorAll("[data-star-branch]");
+      const star = intro.querySelector("[data-intro-star]");
       const logo = intro.querySelector("[data-intro-logo]");
       const skip = intro.querySelector("[data-intro-skip]");
 
@@ -140,19 +135,15 @@ export default function Template({ children }) {
         visibility: "visible",
       });
       gsap.set(bands, { scaleY: 1 });
-      gsap.set(gridLines, {
-        autoAlpha: 0,
-        scaleY: 0,
-        transformOrigin: "center center",
-      });
       gsap.set(logo, { autoAlpha: 0 });
       gsap.set(logoStrokes, {
         attr: { "stroke-dasharray": 1, "stroke-dashoffset": 1 },
       });
-      gsap.set(starCore, { autoAlpha: 0, scale: 0 });
-      gsap.set(starBranches, {
+      gsap.set(star, {
         autoAlpha: 0,
-        attr: { "stroke-dasharray": 1, "stroke-dashoffset": 1 },
+        rotation: -30,
+        scale: 0,
+        transformOrigin: "50% 50%",
       });
       gsap.set(skip, { autoAlpha: 0 });
 
@@ -160,15 +151,7 @@ export default function Template({ children }) {
       introTimelineRef.current = timeline;
 
       timeline
-        .addLabel("grid", 0)
-        .to(gridLines, {
-          autoAlpha: 1,
-          scaleY: 1,
-          duration: 0.65,
-          ease: "power3.inOut",
-          stagger: { each: 0.03, from: "center" },
-        })
-        .to(logo, { autoAlpha: 1, duration: 0.4, ease: "power2.out" }, 0.35)
+        .to(logo, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.15)
         .to(skip, { autoAlpha: 1, duration: 0.24 }, 0.65)
         .to(
           logoStrokes,
@@ -178,28 +161,18 @@ export default function Template({ children }) {
             ease: "power2.inOut",
             stagger: 0.35,
           },
-          0.45,
+          0.25,
         )
         .to(
-          starCore,
+          star,
           {
             autoAlpha: 1,
+            rotation: 0,
             scale: 1,
-            duration: 0.36,
-            ease: "back.out(2)",
+            duration: 0.6,
+            ease: "back.out(2.2)",
           },
           2.6,
-        )
-        .to(
-          starBranches,
-          {
-            autoAlpha: 1,
-            attr: { "stroke-dashoffset": 0 },
-            duration: 0.7,
-            ease: "power3.out",
-            stagger: 0.07,
-          },
-          2.82,
         )
         .to(
           logo,
@@ -210,14 +183,9 @@ export default function Template({ children }) {
             yoyo: true,
             repeat: 1,
           },
-          3.72,
+          3.55,
         )
-        .to(
-          gridLines,
-          { autoAlpha: 0, duration: 0.4, ease: "power2.out" },
-          4.05,
-        )
-        .addLabel("reveal", 4.35)
+        .addLabel("reveal", 4.15)
         .set(page, { autoAlpha: 1 }, "reveal")
         .to(
           intro,
@@ -225,7 +193,7 @@ export default function Template({ children }) {
           "reveal",
         )
         .to(skip, { autoAlpha: 0, duration: 0.18 }, "reveal")
-        .call(() => setIsFirstRender(false), [], 4.48)
+        .call(() => setIsFirstRender(false), [], 4.28)
         .to(
           logo,
           {
@@ -234,10 +202,10 @@ export default function Template({ children }) {
             duration: 0.5,
             ease: "power3.in",
           },
-          4.18,
+          3.98,
         );
 
-      addOpeningBands(timeline, bands, 4.46, 0.78);
+      addOpeningBands(timeline, bands, 4.26, 0.78);
 
       timeline
         .set(
@@ -247,11 +215,11 @@ export default function Template({ children }) {
             pointerEvents: "none",
             visibility: "hidden",
           },
-          5.55,
+          5.35,
         )
-        .set(page, { clearProps: "opacity,visibility" }, 5.55)
-        .call(() => setIsIntroComplete(true), [], 5.55)
-        .call(() => setScrollLock(false), [], 5.55);
+        .set(page, { clearProps: "opacity,visibility" }, 5.35)
+        .call(() => setIsIntroComplete(true), [], 5.35)
+        .call(() => setScrollLock(false), [], 5.35);
 
       return () => {
         introTimelineRef.current = null;
@@ -410,79 +378,49 @@ export default function Template({ children }) {
         ref={introRef}
         className="fixed inset-0 z-16000 overflow-hidden bg-ink text-paper"
       >
-        <div className="absolute inset-0" aria-hidden="true">
-          {INTRO_LINES.map((line, index) => (
-            <span
-              key={line}
-              data-intro-line
-              className="intro-grid-line absolute top-0 h-full w-px bg-paper/15 opacity-0"
-              style={{ "--line-index": index }}
-            />
-          ))}
-        </div>
-
-        <svg
+        <div
           data-intro-logo
-          className="absolute left-1/2 top-1/2 w-[min(78vw,44rem)] -translate-x-1/2 -translate-y-1/2 overflow-visible opacity-0"
-          viewBox="0 0 560 200"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-label="NM étoile"
+          className="absolute left-1/2 top-1/2 flex w-[min(78vw,44rem)] -translate-x-1/2 -translate-y-1/2 items-start opacity-0"
+          aria-label="NM*"
           role="img"
         >
-          <g
-            stroke="currentColor"
-            strokeWidth="28"
-            strokeLinecap="square"
-            strokeLinejoin="miter"
+          <svg
+            className="w-[88%] shrink-0 overflow-visible"
+            viewBox="0 0 490 200"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
           >
-            <path
-              data-logo-stroke
-              pathLength="1"
-              strokeDasharray="1"
-              strokeDashoffset="1"
-              d="M 42 160 V 40 L 218 160 V 40"
-            />
-            <path
-              data-logo-stroke
-              pathLength="1"
-              strokeDasharray="1"
-              strokeDashoffset="1"
-              d="M 286 160 V 40 L 374 132 L 462 40 V 160"
-            />
-          </g>
-
-          <g
-            className="text-blue"
-            transform="translate(520 52)"
-            stroke="currentColor"
-            strokeWidth="7"
-            strokeLinecap="round"
-          >
-            <circle
-              data-star-core
-              cx="0"
-              cy="0"
-              r="5"
-              fill="currentColor"
-              stroke="none"
-            />
-            {STAR_BRANCHES.map((angle) => (
-              <line
-                key={angle}
-                data-star-branch
+            <g
+              stroke="currentColor"
+              strokeWidth="28"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+            >
+              <path
+                data-logo-stroke
                 pathLength="1"
                 strokeDasharray="1"
                 strokeDashoffset="1"
-                x1="0"
-                y1="-11"
-                x2="0"
-                y2="-34"
-                transform={`rotate(${angle})`}
+                d="M 42 160 V 40 L 218 160 V 40"
               />
-            ))}
-          </g>
-        </svg>
+              <path
+                data-logo-stroke
+                pathLength="1"
+                strokeDasharray="1"
+                strokeDashoffset="1"
+                d="M 286 160 V 40 L 374 132 L 462 40 V 160"
+              />
+            </g>
+          </svg>
+          <span
+            data-intro-star
+            aria-hidden="true"
+            className="display-type -ml-[0.01em] -mt-[0.08em] inline-block text-[clamp(4.5rem,11vw,8rem)] text-blue"
+          >
+            *
+          </span>
+        </div>
 
         <button
           type="button"

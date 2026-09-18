@@ -5,7 +5,8 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
-import Link from "../../components/Link";
+import AnimatedHeroTitle from "../../components/ui/AnimatedHeroTitle";
+import Link from "../../components/ui/Link";
 
 function getImageSource(src, width = 1920) {
   if (!src) return null;
@@ -34,9 +35,10 @@ export default async function PaintingPage({ params }) {
             <p className="eyebrow">{painting.year}</p>
           </div>
           <div className="py-20 lg:py-10">
-            <h1 className="tight-type text-[clamp(3.8rem,8.5vw,9rem)] font-bold">
-              {painting.title}
-            </h1>
+            <AnimatedHeroTitle
+              text={painting.title}
+              className="tight-type text-[clamp(3.8rem,8.5vw,9rem)] font-bold [perspective:1000px]"
+            />
             <p className="mt-6 text-xl tracking-[-0.035em] sm:text-3xl">
               {painting.artist}
             </p>

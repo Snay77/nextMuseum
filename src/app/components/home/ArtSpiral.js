@@ -5,8 +5,8 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useStore } from "../_lib/store";
-import Link from "./Link";
+import { useStore } from "../../_lib/store";
+import Link from "../ui/Link";
 
 gsap.registerPlugin(ScrollTrigger);
 

@@ -1,5 +1,6 @@
 import { getObjects } from "../_lib/paintings";
-import Filter from "../components/filter";
+import Filter from "../components/paintings/Filter";
+import AnimatedHeroTitle from "../components/ui/AnimatedHeroTitle";
 
 export const metadata = {
   title: "Collection",
@@ -31,9 +32,10 @@ export default async function PaintingsPage() {
           *
         </div>
 
-        <h1 className="display-type relative z-10 self-center text-center text-[clamp(5rem,23vw,22rem)]">
-          ŒUVRES
-        </h1>
+        <AnimatedHeroTitle
+          text="ŒUVRES"
+          className="display-type relative z-10 self-center text-center text-[clamp(5rem,23vw,22rem)]"
+        />
 
         <div className="relative z-10 grid gap-8 border-t border-ink pt-3 md:grid-cols-[1fr_1fr]">
           <p className="eyebrow">Art moderne & contemporain</p>

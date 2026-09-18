@@ -4,44 +4,45 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { getWikimediaThumbnail, isWikimediaThumbnail } from "../_lib/paintings";
-import Link from "./Link";
-import { LOCOMOTIVE_REFRESH_EVENT } from "./smoothScroll";
+import {
+  getWikimediaThumbnail,
+  isWikimediaThumbnail,
+} from "../../_lib/paintings";
+import { LOCOMOTIVE_REFRESH_EVENT } from "../layout/SmoothScroll";
+import Link from "../ui/Link";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const DESKTOP_LAYOUTS = [
-  "md:col-start-1 md:col-span-6 md:translate-x-[1.5vw]",
-  "md:col-start-7 md:col-span-6 md:-translate-x-[1.5vw] md:translate-y-[13vw]",
-  "md:col-start-1 md:col-span-6 md:translate-x-[2.5vw]",
-  "md:col-start-7 md:col-span-6 md:-translate-x-[2.5vw] md:translate-y-[13vw]",
-  "md:col-start-1 md:col-span-6 md:translate-x-[2vw]",
-  "md:col-start-7 md:col-span-6 md:-translate-x-[2vw] md:translate-y-[13vw]",
+  "md:col-start-1 md:col-span-6 md:left-[1.5vw]",
+  "md:col-start-7 md:col-span-6 md:left-[-1.5vw] md:top-[13vw]",
+  "md:col-start-1 md:col-span-6 md:left-[2.5vw]",
+  "md:col-start-7 md:col-span-6 md:left-[-2.5vw] md:top-[13vw]",
+  "md:col-start-1 md:col-span-6 md:left-[2vw]",
+  "md:col-start-7 md:col-span-6 md:left-[-2vw] md:top-[13vw]",
 ];
 
 const MOBILE_OFFSETS = [
-  "-translate-x-[3vw]",
-  "translate-x-[3vw]",
-  "-translate-x-[1vw]",
-  "translate-x-[2vw]",
+  "left-[-3vw]",
+  "left-[3vw]",
+  "left-[-1vw]",
+  "left-[2vw]",
 ];
 
 const DEFAULT_PARALLAX_SPEEDS = [-0.09, 0.12, -0.06, 0.1, -0.12, 0.07];
-const DEFAULT_CAPTION_SHIFTS = [6, -7, 5, -8, 7, -6];
 
 const ORIENTATION_STYLES = {
   landscape: {
     frame: "h-[76%] w-full",
-    caption:
-      "w-[calc(100%+1.5rem)] -translate-y-6 md:w-[calc(100%+2.5rem)] md:-translate-y-12",
+    caption: "-translate-y-6 md:-translate-y-10",
   },
   portrait: {
     frame: "h-full w-[76%]",
-    caption: "w-[84%] translate-y-3",
+    caption: "translate-y-3",
   },
   square: {
     frame: "h-[88%] w-[88%]",
-    caption: "w-[96%] -translate-y-2 md:-translate-y-5",
+    caption: "-translate-y-2 md:-translate-y-4",
   },
 };
 
@@ -69,18 +70,11 @@ function createRandomMotionSettings(count) {
     const speedMagnitude = 0.055 + Math.random() * 0.075;
     const rotationMagnitude = 1.8 + Math.random() * 2;
     const rotationEnd = rotationDirections[index] * rotationMagnitude;
-    const inwardDirection = index % 2 === 0 ? 1 : -1;
-    const shiftsOutward = Math.random() < 0.25;
-    const captionDirection = shiftsOutward ? -inwardDirection : inwardDirection;
-    const captionMagnitude = shiftsOutward
-      ? 1 + Math.random() * 2
-      : 4 + Math.random() * 6;
 
     return {
       speed: Number((parallaxDirections[index] * speedMagnitude).toFixed(3)),
       rotationStart: Number((-rotationEnd * 0.35).toFixed(2)),
       rotationEnd: Number(rotationEnd.toFixed(2)),
-      captionShift: Number((captionDirection * captionMagnitude).toFixed(2)),
     };
   });
 }
@@ -96,34 +90,44 @@ function getOrientation(image) {
   return "square";
 }
 
-function ArtworkCaptionContent({ work }) {
+function ArtworkCaptionContent({ work, index }) {
   return (
-    <div className="grid grid-cols-[1fr_auto] items-start gap-5">
-      <div>
-        <h2 className="tight-type text-[clamp(1.45rem,2.15vw,2.25rem)] font-bold">
-          {work.title}
-        </h2>
-        <p className="mt-2 text-sm opacity-60">{work.artist}</p>
+    <div className="text-ink">
+      <div className="flex items-center gap-3">
+        <span className="font-mono text-[0.625rem] font-bold tabular-nums">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="h-px flex-1 bg-ink/40" />
+        <span className="font-mono text-sm font-bold leading-none text-blue">
+          *
+        </span>
       </div>
 
-      <div className="pt-1 text-right">
-        <p className="eyebrow">{work.year}</p>
-        {work.movement && (
-          <p className="mt-2 max-w-36 text-[0.625rem] uppercase leading-tight tracking-[0.04em] opacity-50">
-            {work.movement}
-          </p>
-        )}
+      <h2 className="tight-type mt-3 text-[clamp(1.25rem,1.65vw,1.65rem)] font-bold">
+        {work.title}
+      </h2>
+
+      <div className="mt-4 flex items-start justify-between gap-5 font-mono text-[0.6rem] uppercase leading-[1.25] tracking-[0.035em]">
+        <p className="max-w-[58%] opacity-60">{work.artist}</p>
+        <div className="text-right">
+          <p>{work.year}</p>
+          {work.movement && <p className="mt-1 opacity-50">{work.movement}</p>}
+        </div>
       </div>
     </div>
   );
 }
 
-function ArtworkCard({ work, index, onImageReady, speed, captionShift }) {
+function ArtworkCard({ work, index, onImageReady, speed }) {
   const [orientation, setOrientation] = useState("landscape");
   const mediaTweens = useRef(new WeakMap());
   const desktopLayout = DESKTOP_LAYOUTS[index % DESKTOP_LAYOUTS.length];
   const mobileOffset = MOBILE_OFFSETS[index % MOBILE_OFFSETS.length];
   const orientationStyles = ORIENTATION_STYLES[orientation];
+  const captionPlacement =
+    index % 2 === 0
+      ? "md:ml-auto md:mr-0 md:translate-x-[22%]"
+      : "md:ml-0 md:mr-auto md:-translate-x-[22%]";
 
   const getMediaTweens = (media) => {
     const existing = mediaTweens.current.get(media);
@@ -179,12 +183,16 @@ function ArtworkCard({ work, index, onImageReady, speed, captionShift }) {
     <article
       className={`relative flex items-start justify-center py-[6svh] md:py-[3vw] ${desktopLayout}`}
     >
-      <div className={`w-[min(88vw,38rem)] ${mobileOffset}`}>
-        <div data-scroll data-scroll-speed={speed} className="artwork-float">
+      <div className={`relative w-[min(88vw,38rem)] ${mobileOffset}`}>
+        <div
+          data-scroll
+          data-scroll-speed={speed}
+          className="artwork-float relative z-20"
+        >
           <Link
             href={`/paintings/${work.slug}`}
             aria-label={`Voir l’œuvre ${work.title} de ${work.artist}`}
-            className="group block"
+            className="group relative z-10 block"
           >
             <div className="grid aspect-square w-full place-items-center">
               <div
@@ -226,17 +234,11 @@ function ArtworkCard({ work, index, onImageReady, speed, captionShift }) {
           </Link>
         </div>
 
-        <div className="min-h-32 sm:min-h-36">
-          <div className={`relative z-20 mx-auto ${orientationStyles.caption}`}>
-            <div
-              className="relative border border-ink/15 bg-[#fafaf7] shadow-[0_0.55rem_1.6rem_rgba(5,5,5,0.07)]"
-              style={{ transform: `translate3d(${captionShift}%, 0, 0)` }}
-            >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-ink/75" />
-              <div className="relative px-4 py-4 text-ink sm:px-5 sm:py-[1.125rem]">
-                <ArtworkCaptionContent work={work} />
-              </div>
-            </div>
+        <div className="min-h-40 sm:min-h-44">
+          <div
+            className={`relative z-0 mx-auto w-[min(78vw,17rem)] ${orientationStyles.caption} ${captionPlacement}`}
+          >
+            <ArtworkCaptionContent work={work} index={index} />
           </div>
         </div>
       </div>
@@ -318,10 +320,6 @@ export default function ParallaxGallery({ works }) {
             speed={
               motionSettings?.[index]?.speed ??
               DEFAULT_PARALLAX_SPEEDS[index % DEFAULT_PARALLAX_SPEEDS.length]
-            }
-            captionShift={
-              motionSettings?.[index]?.captionShift ??
-              DEFAULT_CAPTION_SHIFTS[index % DEFAULT_CAPTION_SHIFTS.length]
             }
             onImageReady={handleImageReady}
           />

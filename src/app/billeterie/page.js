@@ -1,4 +1,5 @@
-import TicketingForm from "../components/ticketingForm";
+import TicketingForm from "../components/ticketing/TicketingForm";
+import AnimatedHeroTitle from "../components/ui/AnimatedHeroTitle";
 
 export const metadata = {
   title: "Billetterie",
@@ -11,9 +12,10 @@ export default function TicketingPage() {
       <div className="grid gap-8 border-b border-ink pb-8 lg:grid-cols-[1fr_3fr]">
         <p className="eyebrow">( Réserver sa visite )</p>
         <div>
-          <h1 className="display-type text-[clamp(4.6rem,15vw,14rem)]">
-            BILLETS
-          </h1>
+          <AnimatedHeroTitle
+            text="BILLETS"
+            className="display-type text-[clamp(4.6rem,15vw,14rem)]"
+          />
           <div className="mt-8 grid gap-8 text-lg sm:grid-cols-2 sm:text-xl">
             <p className="max-w-lg">
               Choisissez votre tarif, composez votre visite et venez voir l’art

@@ -1,4 +1,4 @@
-import Link from "./Link";
+import Link from "../ui/Link";
 
 export default function Footer() {
   return (
@@ -19,15 +19,15 @@ export default function Footer() {
             <Link className="block hover:underline" href="/paintings">
               La collection
             </Link>
+            <Link className="block hover:underline" href="/agenda">
+              Agenda
+            </Link>
             <Link className="block hover:underline" href="/billeterie">
               Billetterie
             </Link>
-            <a
-              className="block hover:underline"
-              href="mailto:bonjour@newmuseum.fr"
-            >
+            <Link className="block hover:underline" href="/contact">
               Contact
-            </a>
+            </Link>
           </div>
         </div>
       </div>

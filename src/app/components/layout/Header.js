@@ -1,4 +1,5 @@
-import Link from "./Link";
+import AuthButton from "../auth/AuthButton";
+import Link from "../ui/Link";
 
 export default function Header() {
   return (
@@ -20,12 +21,12 @@ export default function Header() {
           >
             Collection
           </Link>
-          <a
+          <Link
             className="eyebrow hidden transition-opacity hover:opacity-50 sm:block"
-            href="/#agenda"
+            href="/agenda"
           >
             Agenda
-          </a>
+          </Link>
         </div>
 
         <Link
@@ -39,11 +40,18 @@ export default function Header() {
         <div className="flex items-center justify-end gap-4 sm:gap-7">
           <span className="eyebrow hidden lg:block">Paris · FR</span>
           <Link
+            className="eyebrow hidden transition-opacity hover:opacity-50 xl:block"
+            href="/contact"
+          >
+            Contact
+          </Link>
+          <Link
             className="eyebrow rounded-full bg-ink px-3 py-2 text-paper transition-colors hover:bg-blue sm:px-4"
             href="/billeterie"
           >
             Billets ↗
           </Link>
+          <AuthButton />
         </div>
       </nav>
     </header>

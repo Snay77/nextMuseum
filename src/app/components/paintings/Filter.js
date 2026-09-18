@@ -2,8 +2,8 @@
 
 import { useQueryState } from "nuqs";
 import { useMemo } from "react";
-import ParallaxGallery from "./parallaxGallery";
-import SearchBar from "./searchBar";
+import ParallaxGallery from "./ParallaxGallery";
+import SearchBar from "./SearchBar";
 
 export default function Filter({ objects }) {
   const [movement, setMovement] = useQueryState("movement");

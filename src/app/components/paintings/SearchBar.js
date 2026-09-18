@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { getWikimediaThumbnail, isWikimediaThumbnail } from "../_lib/paintings";
+import {
+  getWikimediaThumbnail,
+  isWikimediaThumbnail,
+} from "../../_lib/paintings";
 
 export default function SearchBar({ paintings }) {
   const [search, setSearch] = useState("");

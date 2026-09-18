@@ -2,7 +2,7 @@
 
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import { useStore } from "../_lib/store";
+import { useStore } from "../../_lib/store";
 
 export default function Link({ href, children, onClick, ...props }) {
   const pathname = usePathname();

@@ -1,10 +1,10 @@
 import "locomotive-scroll/dist/locomotive-scroll.css";
 import "./globals.css";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import Footer from "./components/footer";
-import Header from "./components/header";
-import SmoothScroll from "./components/smoothScroll";
-import Template from "./components/template";
+import Footer from "./components/layout/Footer";
+import Header from "./components/layout/Header";
+import SmoothScroll from "./components/layout/SmoothScroll";
+import Template from "./components/layout/Template";
 
 export const metadata = {
   title: {

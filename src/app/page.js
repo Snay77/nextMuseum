@@ -3,9 +3,9 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "./_lib/paintings";
-import ArtSpiral from "./components/artSpiral";
-import HomeHero from "./components/homeHero";
-import Link from "./components/Link";
+import ArtSpiral from "./components/home/ArtSpiral";
+import HomeHero from "./components/home/HomeHero";
+import Link from "./components/ui/Link";
 
 export const dynamic = "force-dynamic";
 
@@ -97,12 +97,20 @@ export default async function Home() {
                 <span className="hidden text-2xl sm:block">↗</span>
               </div>
             ))}
-            <Link
-              className="mt-6 inline-flex rounded-full bg-blue px-6 py-3 text-sm font-bold text-white"
-              href="/billeterie"
-            >
-              Préparer ma visite →
-            </Link>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Link
+                className="inline-flex rounded-full bg-blue px-6 py-3 text-sm font-bold text-white transition-transform hover:scale-105"
+                href="/agenda"
+              >
+                Voir tout l’agenda →
+              </Link>
+              <Link
+                className="inline-flex rounded-full border border-ink px-6 py-3 text-sm font-bold transition-colors hover:bg-ink hover:text-paper"
+                href="/billeterie"
+              >
+                Préparer ma visite ↗
+              </Link>
+            </div>
           </div>
         </div>
       </section>

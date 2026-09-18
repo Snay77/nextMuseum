@@ -3,30 +3,9 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRef } from "react";
-import { useStore } from "../_lib/store";
-import Link from "./Link";
-
-const HERO_WORDS = [
-  {
-    id: "new",
-    letters: [
-      ["new-n", "N"],
-      ["new-e", "E"],
-      ["new-w", "W"],
-    ],
-  },
-  {
-    id: "museum",
-    letters: [
-      ["museum-m-1", "M"],
-      ["museum-u", "U"],
-      ["museum-s", "S"],
-      ["museum-e", "E"],
-      ["museum-u-2", "U"],
-      ["museum-m-2", "M"],
-    ],
-  },
-];
+import { useStore } from "../../_lib/store";
+import AnimatedHeroTitle from "../ui/AnimatedHeroTitle";
+import Link from "../ui/Link";
 
 export default function HomeHero() {
   const sectionRef = useRef(null);
@@ -41,19 +20,12 @@ export default function HomeHero() {
 
       const section = sectionRef.current;
       const header = document.querySelector("[data-site-header]");
-      const letters = section.querySelectorAll("[data-hero-letter]");
-      const star = section.querySelector("[data-hero-star]");
       const backgroundStar = section.querySelector("[data-hero-texture]");
       const chrome = section.querySelectorAll("[data-hero-chrome]");
       const cta = section.querySelector("[data-hero-cta]");
-      const animatedElements = [
-        header,
-        ...letters,
-        star,
-        backgroundStar,
-        ...chrome,
-        cta,
-      ].filter(Boolean);
+      const animatedElements = [header, backgroundStar, ...chrome, cta].filter(
+        Boolean,
+      );
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
@@ -66,18 +38,6 @@ export default function HomeHero() {
 
       setIsHeroAnimationComplete(false);
 
-      gsap.set(letters, {
-        autoAlpha: 0,
-        rotateX: -78,
-        transformOrigin: "50% 100%",
-        yPercent: 135,
-      });
-      gsap.set(star, {
-        autoAlpha: 0,
-        rotation: -40,
-        scale: 0,
-        transformOrigin: "center center",
-      });
       gsap.set(backgroundStar, {
         autoAlpha: 0,
         rotation: -16,
@@ -95,36 +55,19 @@ export default function HomeHero() {
       const timeline = gsap.timeline({ delay: 0.12 });
 
       timeline
+        .addLabel("texture", 0)
         .to(
           backgroundStar,
           {
             autoAlpha: 1,
             rotation: -8,
             scale: 1,
-            duration: 2.2,
+            duration: 1,
             ease: "power3.out",
           },
-          0.05,
+          "texture",
         )
-        .to(letters, {
-          autoAlpha: 1,
-          rotateX: 0,
-          yPercent: 0,
-          duration: 1.12,
-          ease: "expo.out",
-          stagger: 0.065,
-        })
-        .to(
-          star,
-          {
-            autoAlpha: 1,
-            rotation: 0,
-            scale: 1,
-            duration: 0.68,
-            ease: "back.out(2.2)",
-          },
-          1.2,
-        )
+        .addLabel("chrome", 2.7)
         .to(
           header,
           {
@@ -134,7 +77,7 @@ export default function HomeHero() {
             duration: 0.72,
             ease: "power4.out",
           },
-          1.72,
+          "chrome",
         )
         .to(
           chrome,
@@ -145,7 +88,7 @@ export default function HomeHero() {
             ease: "power3.out",
             stagger: 0.1,
           },
-          1.82,
+          "chrome+=0.1",
         )
         .to(
           cta,
@@ -155,10 +98,10 @@ export default function HomeHero() {
             duration: 0.58,
             ease: "back.out(1.8)",
           },
-          2.35,
+          "chrome+=0.38",
         )
         .set(header, { clearProps: "transform,clipPath,opacity,visibility" })
-        .set([letters, star, backgroundStar, chrome, cta], {
+        .set([backgroundStar, chrome, cta], {
           clearProps: "transform,clipPath,opacity,visibility",
         })
         .call(() => setIsHeroAnimationComplete(true));
@@ -195,33 +138,18 @@ export default function HomeHero() {
         *
       </div>
 
-      <h1
+      <AnimatedHeroTitle
         aria-label="New Museum"
+        lines={[
+          { id: "new", text: "NEW" },
+          { id: "museum", text: "MUSEUM", star: true },
+        ]}
+        active={!isFirstRender}
+        delay={1}
         className="display-type pointer-events-none absolute left-1/2 top-1/2 z-10 w-full -translate-x-1/2 -translate-y-1/2 text-center text-[clamp(6.5rem,21vw,21rem)] [perspective:1000px]"
-      >
-        <span className="sr-only">New Museum</span>
-        {HERO_WORDS.map(({ id, letters: wordLetters }) => (
-          <span
-            key={id}
-            aria-hidden="true"
-            className="flex justify-center overflow-hidden pb-[0.08em]"
-          >
-            {wordLetters.map(([letterId, letter]) => (
-              <span key={letterId} data-hero-letter className="inline-block">
-                {letter}
-              </span>
-            ))}
-            {id === "museum" ? (
-              <span
-                data-hero-star
-                className="ml-[0.04em] inline-block self-start pt-[0.02em] text-[0.38em] text-blue"
-              >
-                *
-              </span>
-            ) : null}
-          </span>
-        ))}
-      </h1>
+        lineClassName="flex justify-center overflow-hidden"
+        starClassName="ml-[0.04em] self-start pt-[0.02em] text-[0.38em] text-blue"
+      />
 
       <div
         className="absolute inset-x-3 bottom-3 z-20 flex items-end justify-between sm:inset-x-4"
