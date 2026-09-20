@@ -143,7 +143,7 @@ export default function AnimatedHeroTitle({
           {line.text.split(" ").map((word, wordIndex, words) => (
             <span
               key={`${line.id}-${word}-${wordIndex + 1}`}
-              className="-mx-[0.08em] inline-flex overflow-hidden px-[0.08em] pb-[0.08em]"
+              className="-mx-[0.08em] -mb-[0.12em] inline-flex overflow-hidden px-[0.08em] pb-[0.2em]"
             >
               {Array.from(word).map((letter, letterIndex) => (
                 <span

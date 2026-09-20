@@ -7,6 +7,8 @@ export const useStore = create((set) => ({
   setTransitionType: (type) => set({ transitionType: type }),
   artworkTransition: null,
   setArtworkTransition: (artwork) => set({ artworkTransition: artwork }),
+  artworkNavigation: null,
+  setArtworkNavigation: (navigation) => set({ artworkNavigation: navigation }),
   collectionState: null,
   setCollectionState: (collectionState) => set({ collectionState }),
   isTransitionActive: false,

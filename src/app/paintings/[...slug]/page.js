@@ -6,8 +6,8 @@ import {
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
 import ArtworkCollectionReturn from "../../components/transitions/ArtworkCollectionReturn";
+import ArtworkRailLink from "../../components/transitions/ArtworkRailLink";
 import AnimatedHeroTitle from "../../components/ui/AnimatedHeroTitle";
-import Link from "../../components/ui/Link";
 
 function getImageSource(src, width = 1920) {
   if (!src) return null;
@@ -211,9 +211,15 @@ export default async function PaintingPage({ params }) {
         </div>
         <div className="grid gap-4 pt-8 md:grid-cols-3">
           {otherPaintings.map((object) => (
-            <Link
+            <ArtworkRailLink
               key={object.id}
               href={`/paintings/${object.slug}`}
+              fromSlug={painting.slug}
+              fromTitle={painting.title}
+              fromArtist={painting.artist}
+              fromYear={painting.year}
+              fromMovement={painting.movement}
+              toSlug={object.slug}
               className="group block"
             >
               <div className="relative aspect-[4/5] overflow-hidden bg-ink/[0.035] p-4 sm:p-6">
@@ -234,7 +240,7 @@ export default async function PaintingPage({ params }) {
                 </div>
                 <span>↗</span>
               </div>
-            </Link>
+            </ArtworkRailLink>
           ))}
         </div>
       </section>
