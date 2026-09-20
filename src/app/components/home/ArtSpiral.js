@@ -220,6 +220,7 @@ export default function ArtSpiral({ works }) {
       );
       cardGroup.rotation.y = centerAngle;
       cardGroup.userData.hoverScale = 1;
+      cardGroup.userData.workSlug = work.slug;
       cardGroup.add(
         new THREE.Mesh(geometry, frontMaterial),
         new THREE.Mesh(geometry, backMaterial),
@@ -288,14 +289,20 @@ export default function ArtSpiral({ works }) {
     const pointer = new THREE.Vector2();
     const raycaster = new THREE.Raycaster();
     let hoveredCard = null;
+    let pointerStart = null;
 
-    const updateHover = (event) => {
+    const getCardAtPointer = (event) => {
       const bounds = canvas.getBoundingClientRect();
       pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
       pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const intersection = raycaster.intersectObjects(ribbon.children, true)[0];
-      hoveredCard = intersection?.object.parent ?? null;
+
+      return intersection?.object.parent ?? null;
+    };
+
+    const updateHover = (event) => {
+      hoveredCard = getCardAtPointer(event);
       canvas.style.cursor = hoveredCard ? "pointer" : "default";
     };
 
@@ -304,8 +311,46 @@ export default function ArtSpiral({ works }) {
       canvas.style.cursor = "default";
     };
 
+    const handlePointerDown = (event) => {
+      if (event.button !== 0) return;
+
+      pointerStart = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      };
+    };
+
+    const handlePointerUp = (event) => {
+      if (!pointerStart || pointerStart.id !== event.pointerId) return;
+
+      const distance = Math.hypot(
+        event.clientX - pointerStart.x,
+        event.clientY - pointerStart.y,
+      );
+      pointerStart = null;
+
+      if (distance > 8) return;
+
+      const clickedCard = getCardAtPointer(event);
+      const workSlug = clickedCard?.userData.workSlug;
+      const store = useStore.getState();
+
+      if (!workSlug || store.isTransitionActive) return;
+
+      store.setDestinationUrl(`/paintings/${workSlug}`);
+      store.setIsTransitionActive(true);
+    };
+
+    const cancelPointer = () => {
+      pointerStart = null;
+    };
+
     canvas.addEventListener("pointermove", updateHover);
     canvas.addEventListener("pointerleave", clearHover);
+    canvas.addEventListener("pointerdown", handlePointerDown);
+    canvas.addEventListener("pointerup", handlePointerUp);
+    canvas.addEventListener("pointercancel", cancelPointer);
 
     let currentFocus = targetFocusRef.current;
     let frameId;
@@ -337,6 +382,9 @@ export default function ArtSpiral({ works }) {
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointermove", updateHover);
       canvas.removeEventListener("pointerleave", clearHover);
+      canvas.removeEventListener("pointerdown", handlePointerDown);
+      canvas.removeEventListener("pointerup", handlePointerUp);
+      canvas.removeEventListener("pointercancel", cancelPointer);
 
       for (const card of cards) {
         card.geometry.dispose();

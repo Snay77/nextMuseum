@@ -180,7 +180,6 @@
   .nm-cursor.-active::after {
     transform: scale(0.82);
   }
-
 }
 
 @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
