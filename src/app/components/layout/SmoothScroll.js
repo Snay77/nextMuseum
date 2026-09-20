@@ -9,6 +9,8 @@ import { useEffect, useRef } from "react";
 gsap.registerPlugin(ScrollTrigger);
 
 export const LOCOMOTIVE_REFRESH_EVENT = "new-museum:scroll-refresh";
+export const LOCOMOTIVE_RESIZE_EVENT = "new-museum:scroll-resize";
+export const LOCOMOTIVE_SCROLL_TO_EVENT = "new-museum:scroll-to";
 export const LOCOMOTIVE_SCROLL_TOP_EVENT = "new-museum:scroll-top";
 
 export default function SmoothScroll({ children }) {
@@ -59,6 +61,22 @@ export default function SmoothScroll({ children }) {
       ScrollTrigger.update();
     };
 
+    const scrollToPosition = (event) => {
+      const top = Math.max(0, Number(event.detail?.top) || 0);
+
+      locomotiveRef.current?.scrollTo(top, {
+        immediate: true,
+        force: true,
+      });
+      window.scrollTo({ top, left: 0, behavior: "instant" });
+      ScrollTrigger.update();
+    };
+
+    const resizeLocomotive = () => {
+      locomotiveRef.current?.resize();
+      ScrollTrigger.refresh();
+    };
+
     const locomotive = createLocomotive();
     const refreshFrame = requestAnimationFrame(() => {
       locomotive.resize();
@@ -66,6 +84,8 @@ export default function SmoothScroll({ children }) {
     });
 
     window.addEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+    window.addEventListener(LOCOMOTIVE_RESIZE_EVENT, resizeLocomotive);
+    window.addEventListener(LOCOMOTIVE_SCROLL_TO_EVENT, scrollToPosition);
     window.addEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
 
     return () => {
@@ -74,6 +94,8 @@ export default function SmoothScroll({ children }) {
         cancelAnimationFrame(rebuildFrameRef.current);
       }
       window.removeEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+      window.removeEventListener(LOCOMOTIVE_RESIZE_EVENT, resizeLocomotive);
+      window.removeEventListener(LOCOMOTIVE_SCROLL_TO_EVENT, scrollToPosition);
       window.removeEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
       locomotiveRef.current?.destroy();
       locomotiveRef.current = null;

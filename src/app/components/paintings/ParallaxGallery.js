@@ -203,9 +203,10 @@ function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
                 <div className="artwork-shadow relative h-full w-full">
                   <div
                     data-artwork-frame
+                    data-artwork-slug={work.slug}
                     onPointerMove={handlePointerMove}
                     onPointerLeave={handlePointerLeave}
-                    className="artwork-card relative h-full w-full overflow-hidden bg-line"
+                    className="artwork-card relative h-full w-full overflow-hidden bg-transparent"
                   >
                     <div
                       data-hover-media
@@ -254,6 +255,7 @@ export default function ParallaxGallery({ works }) {
   const [motionSettings, setMotionSettings] = useState(null);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
   const setArtworkTransition = useStore((state) => state.setArtworkTransition);
+  const setCollectionState = useStore((state) => state.setCollectionState);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
   const setIsTransitionActive = useStore(
     (state) => state.setIsTransitionActive,
@@ -343,10 +345,19 @@ export default function ParallaxGallery({ works }) {
 
     const destination = `/paintings/${work.slug}`;
 
+    setCollectionState({
+      url: `${window.location.pathname}${window.location.search}`,
+      scrollY: window.scrollY,
+      slug: work.slug,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    });
+
     setArtworkTransition({
       id: `${work.slug}-${Date.now()}`,
       slug: work.slug,
       title: work.title,
+      direction: "to-artwork",
       image: image.currentSrc || image.src || getImageSource(work.image),
       naturalWidth: image.naturalWidth,
       naturalHeight: image.naturalHeight,

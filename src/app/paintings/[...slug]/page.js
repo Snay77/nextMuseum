@@ -5,6 +5,7 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
+import ArtworkCollectionReturn from "../../components/transitions/ArtworkCollectionReturn";
 import AnimatedHeroTitle from "../../components/ui/AnimatedHeroTitle";
 import Link from "../../components/ui/Link";
 
@@ -34,9 +35,16 @@ export default async function PaintingPage({ params }) {
     .slice(0, 3);
 
   return (
-    <main className="min-h-screen">
+    <main data-artwork-detail-page className="min-h-screen">
       <section className="grid min-h-[calc(100svh-3.5rem)] border-b border-ink lg:grid-cols-[minmax(0,1.18fr)_minmax(25rem,0.82fr)]">
         <div className="relative grid min-h-[60svh] place-items-center overflow-hidden border-b border-ink bg-ink/[0.035] p-6 sm:min-h-[72svh] sm:p-10 lg:min-h-[calc(100svh-3.5rem)] lg:border-b-0 lg:border-r lg:p-[clamp(2.5rem,5vw,6rem)]">
+          <ArtworkCollectionReturn
+            slug={painting.slug}
+            title={painting.title}
+            listenToHistory
+            className="eyebrow absolute left-3 top-3 z-20 inline-flex items-center gap-3 rounded-full border border-ink bg-paper/90 px-4 py-3 backdrop-blur-md transition-colors hover:bg-ink hover:text-paper sm:left-4 sm:top-4"
+          />
+
           <div
             data-artwork-hero={painting.slug}
             className="relative size-full min-h-[48svh] sm:min-h-[60svh] lg:min-h-0"
@@ -195,12 +203,11 @@ export default async function PaintingPage({ params }) {
               Continuez à regarder.
             </h2>
           </div>
-          <Link
-            href="/paintings"
+          <ArtworkCollectionReturn
+            slug={painting.slug}
+            title={painting.title}
             className="eyebrow hidden rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue sm:block"
-          >
-            Toute la collection →
-          </Link>
+          />
         </div>
         <div className="grid gap-4 pt-8 md:grid-cols-3">
           {otherPaintings.map((object) => (

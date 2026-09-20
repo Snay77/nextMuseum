@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
 import {
-  LOCOMOTIVE_REFRESH_EVENT,
+  LOCOMOTIVE_RESIZE_EVENT,
+  LOCOMOTIVE_SCROLL_TO_EVENT,
   LOCOMOTIVE_SCROLL_TOP_EVENT,
 } from "../layout/SmoothScroll";
 
@@ -56,7 +57,7 @@ const finishArtworkTransition = () => {
   store.setTransitionType("default");
   store.setDestinationUrl("");
   store.setArtworkTransition(null);
-  window.dispatchEvent(new Event(LOCOMOTIVE_REFRESH_EVENT));
+  window.dispatchEvent(new Event(LOCOMOTIVE_RESIZE_EVENT));
 };
 
 export default function ArtworkTransitionOverlay() {
@@ -84,9 +85,20 @@ export default function ArtworkTransitionOverlay() {
       const overlay = overlayRef.current;
       const frame = frameRef.current;
       const coverImage = coverImageRef.current;
+      const isReturn = artworkTransition.direction === "to-collection";
       const sourcePage = document.querySelector(
-        "[data-artwork-collection-page]",
+        isReturn
+          ? "[data-artwork-detail-page]"
+          : "[data-artwork-collection-page]",
       );
+      const sourceCopy = isReturn
+        ? Array.from(
+            document.querySelectorAll("[data-artwork-hero-copy]"),
+          ).find(
+            (element) =>
+              element.dataset.artworkHeroCopy === artworkTransition.slug,
+          )
+        : null;
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
@@ -115,22 +127,36 @@ export default function ArtworkTransitionOverlay() {
       gsap.set(coverImage, {
         autoAlpha: 1,
         objectPosition,
-        scale: 1.18,
+        scale: isReturn ? 1 : 1.18,
       });
 
       const timeline = gsap.timeline();
 
-      timeline
-        .to(
-          frame,
-          {
-            scale: reduceMotion ? 1 : 1.015,
-            duration: reduceMotion ? 0.06 : 0.18,
-            ease: "power2.out",
-          },
-          0,
-        )
-        .to(
+      timeline.to(
+        frame,
+        {
+          scale: reduceMotion ? 1 : 1.015,
+          duration: reduceMotion ? 0.06 : 0.18,
+          ease: "power2.out",
+        },
+        0,
+      );
+
+      if (isReturn) {
+        if (sourceCopy) {
+          timeline.to(
+            sourceCopy,
+            {
+              autoAlpha: 0,
+              y: 12,
+              duration: reduceMotion ? 0.08 : 0.25,
+              ease: "power2.in",
+            },
+            0,
+          );
+        }
+      } else {
+        timeline.to(
           sourcePage,
           {
             autoAlpha: 0.14,
@@ -139,12 +165,22 @@ export default function ArtworkTransitionOverlay() {
             ease: "power2.out",
           },
           0,
-        )
-        .call(
-          () => router.push(destinationUrl, { scroll: false }),
-          [],
-          reduceMotion ? 0.04 : 0.16,
         );
+      }
+
+      if (artworkTransition.navigationMode !== "history") {
+        timeline.call(
+          () => {
+            if (artworkTransition.navigationMode === "back") {
+              router.back();
+            } else {
+              router.push(destinationUrl, { scroll: false });
+            }
+          },
+          [],
+          reduceMotion ? 0.04 : isReturn ? 0.1 : 0.16,
+        );
+      }
 
       const fallbackTimer = window.setTimeout(() => {
         const store = useStore.getState();
@@ -167,7 +203,16 @@ export default function ArtworkTransitionOverlay() {
           pointerEvents: "none",
           visibility: "hidden",
         });
-        gsap.set(sourcePage, { clearProps: "opacity,visibility,transform" });
+        if (sourcePage) {
+          gsap.set(sourcePage, {
+            clearProps: "opacity,visibility,transform",
+          });
+        }
+        if (sourceCopy) {
+          gsap.set(sourceCopy, {
+            clearProps: "opacity,visibility,transform",
+          });
+        }
         setScrollLock(false);
       };
     },
@@ -183,6 +228,7 @@ export default function ArtworkTransitionOverlay() {
         transitionType !== "artwork" ||
         !isTransitionActive ||
         !artworkTransition ||
+        artworkTransition.direction === "to-collection" ||
         pathname !== getPathname(destinationUrl)
       ) {
         return;
@@ -314,6 +360,239 @@ export default function ArtworkTransitionOverlay() {
     },
   );
 
+  useGSAP(
+    () => {
+      if (
+        transitionType !== "artwork" ||
+        !isTransitionActive ||
+        !artworkTransition ||
+        artworkTransition.direction !== "to-collection" ||
+        pathname !== getPathname(destinationUrl)
+      ) {
+        return;
+      }
+
+      const overlay = overlayRef.current;
+      const frame = frameRef.current;
+      const coverImage = coverImageRef.current;
+      const collectionPage = document.querySelector(
+        "[data-artwork-collection-page]",
+      );
+      const targetFrame = Array.from(
+        document.querySelectorAll("[data-artwork-frame]"),
+      ).find(
+        (element) => element.dataset.artworkSlug === artworkTransition.slug,
+      );
+      const targetImage = targetFrame?.querySelector("img");
+      const targetVisual =
+        targetFrame?.closest(".artwork-shadow") || targetFrame;
+
+      if (!collectionPage || !targetFrame || !targetImage || !targetVisual) {
+        gsap.to(overlay, {
+          autoAlpha: 0,
+          duration: 0.2,
+          onComplete: finishArtworkTransition,
+        });
+        return;
+      }
+
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const isMobile = window.matchMedia("(max-width: 47.99rem)").matches;
+      const morphDuration = reduceMotion ? 0.2 : isMobile ? 0.68 : 0.82;
+      const handoffTime = reduceMotion ? morphDuration : morphDuration + 0.02;
+      const collectionState = useStore.getState().collectionState;
+      const savedScroll = Math.max(0, Number(collectionState?.scrollY) || 0);
+      const viewportChanged =
+        Math.abs(
+          window.innerWidth -
+            (Number(collectionState?.viewportWidth) || window.innerWidth),
+        ) > 48 ||
+        Math.abs(
+          window.innerHeight -
+            (Number(collectionState?.viewportHeight) || window.innerHeight),
+        ) > 48;
+      const scheduledFrames = new Set();
+      let timeline;
+      let prepareTimer;
+      let isCancelled = false;
+
+      const scheduleFrame = (callback) => {
+        const frameId = window.requestAnimationFrame(() => {
+          scheduledFrames.delete(frameId);
+          callback();
+        });
+
+        scheduledFrames.add(frameId);
+      };
+
+      const scrollTo = (top) => {
+        window.dispatchEvent(
+          new CustomEvent(LOCOMOTIVE_SCROLL_TO_EVENT, { detail: { top } }),
+        );
+      };
+
+      const startMorph = () => {
+        if (isCancelled) return;
+
+        const targetBounds = targetFrame.getBoundingClientRect();
+        const targetWidth = targetFrame.offsetWidth;
+        const targetHeight = targetFrame.offsetHeight;
+        const targetRect = {
+          left: targetBounds.left + (targetBounds.width - targetWidth) / 2,
+          top: targetBounds.top + (targetBounds.height - targetHeight) / 2,
+          width: targetWidth,
+          height: targetHeight,
+        };
+        const tilt = targetFrame.closest("[data-artwork-tilt]");
+        const transform = tilt
+          ? window.getComputedStyle(tilt).transform
+          : "none";
+        let targetRotation = 0;
+
+        if (transform && transform !== "none") {
+          const matrix = new DOMMatrixReadOnly(transform);
+          targetRotation = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
+        }
+
+        timeline = gsap.timeline();
+        timeline
+          .to(
+            frame,
+            {
+              left: targetRect.left,
+              top: targetRect.top,
+              width: targetRect.width,
+              height: targetRect.height,
+              rotation: targetRotation,
+              scale: 1,
+              duration: morphDuration,
+              ease: reduceMotion ? "power2.out" : "expo.inOut",
+            },
+            0,
+          )
+          .to(
+            coverImage,
+            {
+              scale: 1.18,
+              objectPosition:
+                window.getComputedStyle(targetImage).objectPosition,
+              duration: morphDuration,
+              ease: reduceMotion ? "power2.out" : "expo.inOut",
+            },
+            0,
+          )
+          .to(
+            collectionPage,
+            {
+              autoAlpha: 1,
+              duration: reduceMotion ? 0.12 : 0.42,
+              ease: "power2.out",
+            },
+            reduceMotion ? 0 : morphDuration * 0.62,
+          )
+          .set(targetVisual, { autoAlpha: 1 }, handoffTime)
+          .set(frame, { autoAlpha: 0 }, handoffTime)
+          .set([collectionPage, targetVisual], {
+            clearProps: "opacity,visibility,transform,transition",
+          })
+          .call(finishArtworkTransition);
+      };
+
+      const measureAfterScroll = () => {
+        scheduleFrame(() => {
+          scheduleFrame(() => {
+            if (isCancelled) return;
+
+            const targetRect = targetFrame.getBoundingClientRect();
+            const isOutsideViewport =
+              targetRect.bottom < 0 || targetRect.top > window.innerHeight;
+
+            if (isOutsideViewport && viewportChanged) {
+              const centeredScroll =
+                window.scrollY +
+                targetRect.top -
+                (window.innerHeight - targetRect.height) / 2;
+
+              scrollTo(centeredScroll);
+              scheduleFrame(() => scheduleFrame(startMorph));
+              return;
+            }
+
+            startMorph();
+          });
+        });
+      };
+
+      const prepareTarget = () => {
+        if (isCancelled) return;
+        scrollTo(savedScroll);
+        measureAfterScroll();
+      };
+
+      setScrollLock(true);
+      gsap.set(overlay, {
+        autoAlpha: 1,
+        pointerEvents: "auto",
+        visibility: "visible",
+      });
+      gsap.set(frame, {
+        autoAlpha: 1,
+        left: artworkTransition.sourceRect.left,
+        top: artworkTransition.sourceRect.top,
+        width: artworkTransition.sourceRect.width,
+        height: artworkTransition.sourceRect.height,
+        rotation: 0,
+        scale: 1,
+      });
+      gsap.set(coverImage, {
+        autoAlpha: 1,
+        objectPosition: artworkTransition.objectPosition,
+        scale: 1,
+      });
+      gsap.set(collectionPage, { autoAlpha: 0.14 });
+      gsap.set(targetVisual, {
+        autoAlpha: 0,
+        transition: "none",
+        y: 0,
+        scale: 1,
+      });
+
+      const waitForLayout = () => {
+        prepareTimer = window.setTimeout(prepareTarget, reduceMotion ? 0 : 120);
+      };
+
+      if (targetImage.complete && targetImage.naturalWidth) {
+        waitForLayout();
+      } else {
+        targetImage
+          .decode()
+          .catch(() => {})
+          .finally(waitForLayout);
+      }
+
+      return () => {
+        isCancelled = true;
+        window.clearTimeout(prepareTimer);
+        scheduledFrames.forEach((frameId) => {
+          window.cancelAnimationFrame(frameId);
+        });
+        timeline?.kill();
+        gsap.set(collectionPage, {
+          clearProps: "opacity,visibility,transform",
+        });
+        gsap.set(targetVisual, {
+          clearProps: "opacity,visibility,transform,transition",
+        });
+      };
+    },
+    {
+      dependencies: [pathname, artworkTransition?.id],
+      scope: overlayRef,
+    },
+  );
+
   if (!artworkTransition) return null;
 
   return (
@@ -324,7 +603,7 @@ export default function ArtworkTransitionOverlay() {
     >
       <div
         ref={frameRef}
-        className="fixed overflow-hidden bg-line shadow-[0_2.5rem_7rem_rgba(5,5,5,0.3)] will-change-[top,left,width,height,transform]"
+        className="fixed overflow-hidden bg-transparent shadow-[0_2.5rem_7rem_rgba(5,5,5,0.3)] will-change-[top,left,width,height,transform]"
       >
         {/* The browser-cached currentSrc keeps the moving clone pixel-identical. */}
         {/* biome-ignore lint/performance/noImgElement: a transient clone must reuse the exact browser-cached currentSrc */}
