@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
+import ArtworkTransitionOverlay from "../transitions/ArtworkTransitionOverlay";
 
 const BAND_COUNT = 10;
 const TRANSITION_BANDS = Array.from(
@@ -83,6 +84,7 @@ export default function Template({ children }) {
   const destinationUrl = useStore((state) => state.destinationUrl);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
+  const transitionType = useStore((state) => state.transitionType);
   const setIsTransitionActive = useStore(
     (state) => state.setIsTransitionActive,
   );
@@ -248,6 +250,7 @@ export default function Template({ children }) {
     () => {
       if (
         isImmersiveRoute ||
+        transitionType === "artwork" ||
         !isTransitionActive ||
         isFirstRender ||
         !destinationUrl
@@ -294,6 +297,7 @@ export default function Template({ children }) {
         isFirstRender,
         isImmersiveRoute,
         isTransitionActive,
+        transitionType,
       ],
       scope: rootRef,
     },
@@ -304,6 +308,7 @@ export default function Template({ children }) {
     () => {
       if (
         isImmersiveRoute ||
+        transitionType === "artwork" ||
         !isTransitionActive ||
         isFirstRender ||
         !destinationUrl
@@ -378,6 +383,8 @@ export default function Template({ children }) {
 
   return (
     <div ref={rootRef}>
+      <ArtworkTransitionOverlay />
+
       <div
         ref={transitionRef}
         aria-hidden="true"

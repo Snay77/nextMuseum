@@ -5,6 +5,7 @@ import {
 } from "./_lib/paintings";
 import ArtSpiral from "./components/home/ArtSpiral";
 import HomeHero from "./components/home/HomeHero";
+import SingularityTeaser from "./components/home/SingularityTeaser";
 import Link from "./components/ui/Link";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <SingularityTeaser />
     </main>
   );
 }

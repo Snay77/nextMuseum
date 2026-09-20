@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 gsap.registerPlugin(ScrollTrigger);
 
 export const LOCOMOTIVE_REFRESH_EVENT = "new-museum:scroll-refresh";
+export const LOCOMOTIVE_SCROLL_TOP_EVENT = "new-museum:scroll-top";
 
 export default function SmoothScroll({ children }) {
   const locomotiveRef = useRef(null);
@@ -49,6 +50,15 @@ export default function SmoothScroll({ children }) {
       });
     };
 
+    const scrollToTop = () => {
+      locomotiveRef.current?.scrollTo(0, {
+        immediate: true,
+        force: true,
+      });
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      ScrollTrigger.update();
+    };
+
     const locomotive = createLocomotive();
     const refreshFrame = requestAnimationFrame(() => {
       locomotive.resize();
@@ -56,6 +66,7 @@ export default function SmoothScroll({ children }) {
     });
 
     window.addEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+    window.addEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
 
     return () => {
       cancelAnimationFrame(refreshFrame);
@@ -63,6 +74,7 @@ export default function SmoothScroll({ children }) {
         cancelAnimationFrame(rebuildFrameRef.current);
       }
       window.removeEventListener(LOCOMOTIVE_REFRESH_EVENT, rebuildLocomotive);
+      window.removeEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
       locomotiveRef.current?.destroy();
       locomotiveRef.current = null;
     };

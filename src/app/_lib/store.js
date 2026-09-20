@@ -3,6 +3,10 @@ import { create } from "zustand";
 export const useStore = create((set) => ({
   destinationUrl: "",
   setDestinationUrl: (url) => set({ destinationUrl: url }),
+  transitionType: "default",
+  setTransitionType: (type) => set({ transitionType: type }),
+  artworkTransition: null,
+  setArtworkTransition: (artwork) => set({ artworkTransition: artwork }),
   isTransitionActive: false,
   setIsTransitionActive: (isActive) => set({ isTransitionActive: isActive }),
   isFirstRender: true,

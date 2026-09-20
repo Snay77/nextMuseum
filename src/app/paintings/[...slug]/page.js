@@ -37,7 +37,10 @@ export default async function PaintingPage({ params }) {
     <main className="min-h-screen">
       <section className="grid min-h-[calc(100svh-3.5rem)] border-b border-ink lg:grid-cols-[minmax(0,1.18fr)_minmax(25rem,0.82fr)]">
         <div className="relative grid min-h-[60svh] place-items-center overflow-hidden border-b border-ink bg-ink/[0.035] p-6 sm:min-h-[72svh] sm:p-10 lg:min-h-[calc(100svh-3.5rem)] lg:border-b-0 lg:border-r lg:p-[clamp(2.5rem,5vw,6rem)]">
-          <div className="relative size-full min-h-[48svh] sm:min-h-[60svh] lg:min-h-0">
+          <div
+            data-artwork-hero={painting.slug}
+            className="relative size-full min-h-[48svh] sm:min-h-[60svh] lg:min-h-0"
+          >
             <Image
               src={getImageSource(painting.image)}
               alt={painting.title}
@@ -56,7 +59,10 @@ export default async function PaintingPage({ params }) {
           </div>
         </div>
 
-        <div className="flex min-h-[42rem] flex-col justify-between px-3 py-5 sm:px-4 sm:py-7 lg:min-h-full">
+        <div
+          data-artwork-hero-copy={painting.slug}
+          className="flex min-h-[42rem] flex-col justify-between px-3 py-5 sm:px-4 sm:py-7 lg:min-h-full"
+        >
           <div className="flex items-start justify-between gap-6 border-b border-ink/25 pb-3">
             <p className="eyebrow">{painting.type ?? "Œuvre"}</p>
             <p className="eyebrow text-blue">{painting.year}</p>

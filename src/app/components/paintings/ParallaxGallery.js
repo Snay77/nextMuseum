@@ -8,6 +8,7 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
+import { useStore } from "../../_lib/store";
 import { LOCOMOTIVE_REFRESH_EVENT } from "../layout/SmoothScroll";
 import Link from "../ui/Link";
 
@@ -117,7 +118,7 @@ function ArtworkCaptionContent({ work, index }) {
   );
 }
 
-function ArtworkCard({ work, index, onImageReady, speed }) {
+function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
   const [orientation, setOrientation] = useState("landscape");
   const mediaTweens = useRef(new WeakMap());
   const desktopLayout = DESKTOP_LAYOUTS[index % DESKTOP_LAYOUTS.length];
@@ -192,6 +193,7 @@ function ArtworkCard({ work, index, onImageReady, speed }) {
             href={`/paintings/${work.slug}`}
             aria-label={`Voir l’œuvre ${work.title} de ${work.artist}`}
             className="group relative z-10 block"
+            onClick={(event) => onArtworkClick(event, work)}
           >
             <div className="grid aspect-square w-full place-items-center">
               <div
@@ -200,6 +202,7 @@ function ArtworkCard({ work, index, onImageReady, speed }) {
               >
                 <div className="artwork-shadow relative h-full w-full">
                   <div
+                    data-artwork-frame
                     onPointerMove={handlePointerMove}
                     onPointerLeave={handlePointerLeave}
                     className="artwork-card relative h-full w-full overflow-hidden bg-line"
@@ -249,6 +252,13 @@ export default function ParallaxGallery({ works }) {
   const galleryRef = useRef(null);
   const loadedImagesRef = useRef(0);
   const [motionSettings, setMotionSettings] = useState(null);
+  const isTransitionActive = useStore((state) => state.isTransitionActive);
+  const setArtworkTransition = useStore((state) => state.setArtworkTransition);
+  const setDestinationUrl = useStore((state) => state.setDestinationUrl);
+  const setIsTransitionActive = useStore(
+    (state) => state.setIsTransitionActive,
+  );
+  const setTransitionType = useStore((state) => state.setTransitionType);
 
   useEffect(() => {
     setMotionSettings(createRandomMotionSettings(works.length));
@@ -308,14 +318,65 @@ export default function ParallaxGallery({ works }) {
     }
   };
 
+  const handleArtworkClick = (event, work) => {
+    const isModifiedClick =
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+
+    if (isModifiedClick || event.currentTarget.target === "_blank") return;
+
+    const frame = event.currentTarget.querySelector("[data-artwork-frame]");
+    const image = frame?.querySelector("img");
+
+    if (!frame || !image || isTransitionActive) return;
+
+    event.preventDefault();
+
+    const bounds = frame.getBoundingClientRect();
+    const tilt = frame.closest("[data-artwork-tilt]");
+    const transform = tilt ? window.getComputedStyle(tilt).transform : "none";
+    let sourceRotation = 0;
+
+    if (transform && transform !== "none") {
+      const matrix = new DOMMatrixReadOnly(transform);
+      sourceRotation = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
+    }
+
+    const destination = `/paintings/${work.slug}`;
+
+    setArtworkTransition({
+      id: `${work.slug}-${Date.now()}`,
+      slug: work.slug,
+      title: work.title,
+      image: image.currentSrc || image.src || getImageSource(work.image),
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      objectPosition: window.getComputedStyle(image).objectPosition,
+      sourceRotation,
+      sourceRect: {
+        top: bounds.top,
+        left: bounds.left,
+        width: bounds.width,
+        height: bounds.height,
+      },
+    });
+    setTransitionType("artwork");
+    setDestinationUrl(destination);
+    setIsTransitionActive(true);
+  };
+
   return (
-    <section ref={galleryRef} className="relative border-b border-ink/20">
+    <section
+      ref={galleryRef}
+      data-artwork-gallery
+      className="relative border-b border-ink/20"
+    >
       <div className="grid grid-cols-1 pb-[24svh] pt-[10svh] md:grid-cols-12 md:gap-x-[3vw] md:px-[2vw] md:pb-[30svh] md:pt-[8vw]">
         {works.map((work, index) => (
           <ArtworkCard
             key={work.id}
             work={work}
             index={index}
+            onArtworkClick={handleArtworkClick}
             speed={
               motionSettings?.[index]?.speed ??
               DEFAULT_PARALLAX_SPEEDS[index % DEFAULT_PARALLAX_SPEEDS.length]

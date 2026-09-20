@@ -8,6 +8,7 @@ export default function Link({ href, children, onClick, ...props }) {
   const pathname = usePathname();
   const isTransitionActive = useStore((state) => state.isTransitionActive);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
+  const setTransitionType = useStore((state) => state.setTransitionType);
   const setIsTransitionActive = useStore(
     (state) => state.setIsTransitionActive,
   );
@@ -42,6 +43,7 @@ export default function Link({ href, children, onClick, ...props }) {
 
         if (isTransitionActive || target.pathname === pathname) return;
 
+        setTransitionType("default");
         setDestinationUrl(href);
         setIsTransitionActive(true);
       }}

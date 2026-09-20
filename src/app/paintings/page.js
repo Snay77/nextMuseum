@@ -14,7 +14,10 @@ export default async function PaintingsPage() {
   const objects = await getObjects();
 
   return (
-    <main className="min-h-screen px-3 pb-24 sm:px-4 sm:pb-36">
+    <main
+      data-artwork-collection-page
+      className="min-h-screen px-3 pb-24 sm:px-4 sm:pb-36"
+    >
       <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-between overflow-hidden border-b border-ink py-5 sm:min-h-[calc(100svh-4rem)] sm:py-7">
         <div className="relative z-10 flex items-start justify-between">
           <p className="eyebrow">( Collection permanente )</p>
