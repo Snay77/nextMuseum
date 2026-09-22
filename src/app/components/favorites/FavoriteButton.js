@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession } from "@/app/_lib/auth-client";
 import { useStore } from "@/app/_lib/store";
+import { useI18n } from "@/app/i18n/I18nProvider";
 
 function HeartIcon({ filled }) {
   return (
@@ -23,7 +24,9 @@ export default function FavoriteButton({
   slug,
   className = "",
   revealOnHover = false,
+  ...props
 }) {
+  const { t } = useI18n();
   const { data: session, isPending: isSessionPending } = useSession();
   const [isSaving, setIsSaving] = useState(false);
   const favoriteSlugs = useStore((state) => state.favoriteSlugs);
@@ -57,8 +60,11 @@ export default function FavoriteButton({
 
   return (
     <button
+      {...props}
       type="button"
-      aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+      aria-label={
+        isFavorite ? t("artwork.removeFavorite") : t("artwork.addFavorite")
+      }
       aria-pressed={isFavorite}
       aria-busy={isSaving}
       onClick={toggleFavorite}

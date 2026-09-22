@@ -3,15 +3,14 @@
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import AnimatedHeroTitle from "../ui/AnimatedHeroTitle";
 import Link from "../ui/Link";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const FILTERS = ["Tout", "Exposition", "Performance", "Rencontre", "Atelier"];
-
-const EVENTS = [
+const FALLBACK_EVENTS = [
   {
     id: "regard-mouvement",
     day: "17",
@@ -157,6 +156,7 @@ function AgendaPoster() {
 }
 
 function EventRow({ event, index, expanded, onToggle }) {
+  const { t } = useI18n();
   return (
     <article
       data-agenda-row
@@ -222,29 +222,38 @@ function EventRow({ event, index, expanded, onToggle }) {
                 href="/billeterie"
                 className="mt-4 inline-flex rounded-full bg-blue px-5 py-3 text-[0.65rem] font-bold uppercase tracking-[0.04em] text-white transition-transform hover:scale-105"
               >
-                Réserver ↗
+                {t("agenda.reserve")}
               </Link>
             </div>
           </div>
         </div>
       </div>
-      <span className="sr-only">Événement {index + 1}</span>
+      <span className="sr-only">
+        {t("agenda.event", { number: index + 1 })}
+      </span>
     </article>
   );
 }
 
 export default function AgendaExperience() {
+  const { dictionary, t } = useI18n();
+  const filters = dictionary.agenda.filters;
+  const events = dictionary.agenda.events ?? FALLBACK_EVENTS;
   const rootRef = useRef(null);
-  const [activeFilter, setActiveFilter] = useState("Tout");
+  const [activeFilter, setActiveFilter] = useState(filters[0]);
   const [expandedId, setExpandedId] = useState(null);
 
   const filteredEvents = useMemo(
     () =>
-      activeFilter === "Tout"
-        ? EVENTS
-        : EVENTS.filter((event) => event.type === activeFilter),
-    [activeFilter],
+      activeFilter === filters[0]
+        ? events
+        : events.filter((event) => event.type === activeFilter),
+    [activeFilter, events, filters],
   );
+
+  useEffect(() => {
+    if (!filters.includes(activeFilter)) setActiveFilter(filters[0]);
+  }, [activeFilter, filters]);
 
   useGSAP(
     () => {
@@ -321,11 +330,11 @@ export default function AgendaExperience() {
     <div ref={rootRef} className="overflow-hidden">
       <section className="relative min-h-[calc(100svh-3.5rem)] border-b border-ink px-3 pb-4 pt-5 sm:min-h-[calc(100svh-4rem)] sm:px-4 sm:pt-7">
         <div className="flex items-start justify-between" data-agenda-meta>
-          <p className="eyebrow">( Programme public )</p>
+          <p className="eyebrow">{t("agenda.publicProgram")}</p>
           <p className="eyebrow text-right leading-[1.25]">
-            Septembre—Décembre
+            {t("agenda.seasonRange")}
             <br />
-            Saison 2026
+            {t("agenda.season")}
           </p>
         </div>
 
@@ -340,14 +349,16 @@ export default function AgendaExperience() {
           data-agenda-meta
         >
           <p className="max-w-[18rem] text-sm leading-[1.2] sm:text-base">
-            Des rendez-vous pour regarder, écouter, faire et débattre autrement.
+            {t("agenda.intro")}
           </p>
-          <p className="eyebrow hidden text-center sm:block">08 rendez-vous</p>
+          <p className="eyebrow hidden text-center sm:block">
+            {t("agenda.appointments")}
+          </p>
           <a
             href="#programme"
             className="eyebrow justify-self-end border-b border-ink pb-1 transition-colors hover:border-blue hover:text-blue"
           >
-            Voir le programme ↓
+            {t("agenda.viewProgram")}
           </a>
         </div>
       </section>
@@ -359,30 +370,29 @@ export default function AgendaExperience() {
         <div className="order-2 flex min-h-[34rem] flex-col justify-between p-3 sm:p-4 lg:order-1 lg:min-h-0">
           <div data-reveal-section>
             <div className="flex items-center justify-between border-b border-ink pb-3">
-              <p className="eyebrow">( À la une )</p>
+              <p className="eyebrow">{t("agenda.featured")}</p>
               <p className="font-mono text-[0.65rem] font-bold">02 / 08</p>
             </div>
             <h2 className="tight-type mt-5 max-w-4xl text-[clamp(4rem,9.4vw,9.5rem)] font-bold">
-              LA NUIT
+              {t("agenda.featuredTitleFirst")}
               <br />
-              DES FORMES
+              {t("agenda.featuredTitleSecond")}
               <span className="text-blue">*</span>
             </h2>
           </div>
 
           <div className="grid gap-7 border-t border-ink pt-4 sm:grid-cols-2">
             <p className="max-w-md text-lg leading-[1.15] sm:text-xl">
-              Une performance lumineuse et sonore qui transforme le musée après
-              la fermeture.
+              {t("agenda.featuredCopy")}
             </p>
             <div className="grid grid-cols-2 gap-4 font-mono text-[0.65rem] font-bold uppercase leading-[1.4]">
               <div>
-                <p className="mb-2 text-ink/45">Quand</p>
-                <p>Ven. 25 sept.</p>
+                <p className="mb-2 text-ink/45">{t("agenda.when")}</p>
+                <p>{t("agenda.featuredDate")}</p>
                 <p>20:30</p>
               </div>
               <div>
-                <p className="mb-2 text-ink/45">Où</p>
+                <p className="mb-2 text-ink/45">{t("agenda.where")}</p>
                 <p>Atrium</p>
                 <p>75 minutes</p>
               </div>
@@ -390,7 +400,7 @@ export default function AgendaExperience() {
                 href="/billeterie"
                 className="col-span-2 mt-2 inline-flex w-fit rounded-full bg-ink px-5 py-3 text-paper transition-colors hover:bg-blue"
               >
-                Prendre un billet ↗
+                {t("agenda.takeTicket")}
               </Link>
             </div>
           </div>
@@ -406,13 +416,13 @@ export default function AgendaExperience() {
           data-reveal-section
           className="mb-14 grid gap-8 lg:grid-cols-[1fr_3fr]"
         >
-          <p className="eyebrow">( Tous les rendez-vous )</p>
+          <p className="eyebrow">{t("agenda.allEvents")}</p>
           <div>
             <h2 className="tight-type text-[clamp(3.8rem,9vw,9rem)] font-bold">
-              PROGRAMME
+              {t("agenda.program")}
             </h2>
             <div className="mt-8 flex flex-wrap gap-2 border-t border-ink pt-4">
-              {FILTERS.map((filter) => (
+              {filters.map((filter) => (
                 <button
                   key={filter}
                   type="button"
@@ -453,26 +463,21 @@ export default function AgendaExperience() {
 
       <section className="grid border-t border-ink bg-blue text-white lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex min-h-[34rem] flex-col justify-between p-3 sm:p-4 lg:min-h-[42rem]">
-          <p className="eyebrow">( Votre visite )</p>
+          <p className="eyebrow">{t("agenda.yourVisit")}</p>
           <div data-reveal-section>
             <h2 className="tight-type text-[clamp(4rem,9vw,9rem)] font-bold">
-              UN JOUR
+              {t("agenda.dayFirst")}
               <br />
-              AU MUSÉE.
+              {t("agenda.daySecond")}
             </h2>
             <p className="mt-7 max-w-lg text-lg leading-[1.2] sm:text-xl">
-              Toutes les expositions sont accessibles avec le billet d’entrée.
-              Certains rendez-vous nécessitent une réservation.
+              {t("agenda.visitCopy")}
             </p>
           </div>
         </div>
 
         <div className="grid border-t border-white lg:border-l lg:border-t-0">
-          {[
-            ["Horaires", "Mar—Dim", "10:00—19:00"],
-            ["Nocturne", "Vendredi", "Jusqu’à 22:00"],
-            ["Adresse", "10 rue du Musée", "75003 Paris"],
-          ].map(([label, lineOne, lineTwo]) => (
+          {dictionary.agenda.practical.map(([label, lineOne, lineTwo]) => (
             <div
               key={label}
               className="grid grid-cols-[1fr_2fr] items-start border-b border-white p-3 last:border-b-0 sm:p-4"
@@ -490,7 +495,7 @@ export default function AgendaExperience() {
             className="group flex items-end justify-between bg-ink p-3 text-paper transition-colors hover:bg-paper hover:text-ink sm:p-4"
           >
             <span className="tight-type text-[clamp(2.4rem,5vw,5rem)] font-bold">
-              RÉSERVER
+              {t("agenda.reserveCaps")}
             </span>
             <span className="text-4xl transition-transform group-hover:-translate-y-1 group-hover:translate-x-1">
               ↗

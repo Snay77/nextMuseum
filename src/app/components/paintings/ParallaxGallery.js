@@ -9,6 +9,7 @@ import {
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
 import FavoriteButton from "../favorites/FavoriteButton";
 import { LOCOMOTIVE_REFRESH_EVENT } from "../layout/SmoothScroll";
 import Link from "../ui/Link";
@@ -120,6 +121,7 @@ function ArtworkCaptionContent({ work, index }) {
 }
 
 function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
+  const { t } = useI18n();
   const [orientation, setOrientation] = useState("landscape");
   const mediaTweens = useRef(new WeakMap());
   const desktopLayout = DESKTOP_LAYOUTS[index % DESKTOP_LAYOUTS.length];
@@ -197,7 +199,10 @@ function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
             >
               <Link
                 href={`/paintings/${work.slug}`}
-                aria-label={`Voir l’œuvre ${work.title} de ${work.artist}`}
+                aria-label={t("collection.viewArtwork", {
+                  title: work.title,
+                  artist: work.artist,
+                })}
                 className="relative z-10 block h-full w-full"
                 onClick={(event) => onArtworkClick(event, work)}
               >

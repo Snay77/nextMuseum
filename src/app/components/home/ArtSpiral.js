@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
 import {
   LOCOMOTIVE_START_EVENT,
   LOCOMOTIVE_STOP_EVENT,
@@ -33,7 +34,7 @@ const IMAGE_OVERRIDES = {
 
 function createCurvedCard(centerAngle) {
   const columns = 32;
-  const rows = 2;
+  const rows = 8;
   const helixPitch = VERTICAL_STEP / ANGLE_STEP;
   const centerWave = Math.sin(centerAngle * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
   const positions = [];
@@ -143,13 +144,49 @@ function createFlatCard(geometry, aspectRatio = FLAT_CARD_WIDTH / CARD_HEIGHT) {
 
 function morphCardGeometry(geometry, curvedPositions, flatPositions, progress) {
   const position = geometry.getAttribute("position");
+  const uvs = geometry.getAttribute("uv");
+  const deformationEnvelope = Math.sin(progress * Math.PI);
 
-  for (let index = 0; index < position.array.length; index += 1) {
-    position.array[index] = THREE.MathUtils.lerp(
-      curvedPositions[index],
-      flatPositions[index],
+  for (let vertexIndex = 0; vertexIndex < position.count; vertexIndex += 1) {
+    const offset = vertexIndex * 3;
+    const u = uvs.getX(vertexIndex);
+    const v = uvs.getY(vertexIndex);
+    const horizontal = u - 0.5;
+    const vertical = v - 0.5;
+    const edgeStrength = (Math.abs(horizontal) * 2) ** 1.65;
+    const travelingWave = Math.sin((u * 1.7 + progress * 0.9) * Math.PI * 2);
+    const widthOvershoot =
+      1 + deformationEnvelope * (0.045 + edgeStrength * 0.04);
+    const baseX = THREE.MathUtils.lerp(
+      curvedPositions[offset],
+      flatPositions[offset],
       progress,
     );
+    const baseY = THREE.MathUtils.lerp(
+      curvedPositions[offset + 1],
+      flatPositions[offset + 1],
+      progress,
+    );
+    const baseZ = THREE.MathUtils.lerp(
+      curvedPositions[offset + 2],
+      flatPositions[offset + 2],
+      progress,
+    );
+
+    position.array[offset] =
+      baseX * widthOvershoot +
+      travelingWave * deformationEnvelope * edgeStrength * 0.12;
+    position.array[offset + 1] =
+      baseY +
+      deformationEnvelope *
+        (horizontal * 0.42 +
+          Math.sin((u + progress * 0.65) * Math.PI * 2) *
+            (0.24 + Math.abs(vertical) * 0.18));
+    position.array[offset + 2] =
+      baseZ +
+      deformationEnvelope *
+        (travelingWave * (0.32 + edgeStrength * 0.38) +
+          horizontal * vertical * 1.1);
   }
 
   position.needsUpdate = true;
@@ -200,12 +237,16 @@ function getProjectedCardRect(cardGroup, geometry, camera, canvas) {
 }
 
 export default function ArtSpiral({ works }) {
+  const { t } = useI18n();
   const sectionRef = useRef(null);
   const stageRef = useRef(null);
   const canvasRef = useRef(null);
   const targetFocusRef = useRef(0);
   const startSpiralTransitionRef = useRef(null);
+  const artworkLabelRef = useRef(null);
+  const displayedIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [canInitialize, setCanInitialize] = useState(false);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
 
@@ -233,6 +274,96 @@ export default function ArtSpiral({ works }) {
         return;
       }
 
+      const label = artworkLabelRef.current;
+      let labelTimeline;
+      let settleTimer;
+      let revealFrame;
+      let queuedIndex = displayedIndexRef.current;
+      let isFastScrolling = false;
+      let isSwapping = false;
+
+      const revealLabel = () => {
+        labelTimeline?.kill();
+        labelTimeline = gsap.to(label, {
+          autoAlpha: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 0.48,
+          ease: "power3.out",
+          overwrite: true,
+        });
+      };
+
+      const settleFastScroll = () => {
+        isFastScrolling = false;
+        isSwapping = false;
+        displayedIndexRef.current = queuedIndex;
+        setActiveIndex(queuedIndex);
+        revealFrame = window.requestAnimationFrame(revealLabel);
+      };
+
+      const scheduleSettle = (delay = 150) => {
+        window.clearTimeout(settleTimer);
+        settleTimer = window.setTimeout(settleFastScroll, delay);
+      };
+
+      const hideForFastScroll = () => {
+        if (isFastScrolling) return;
+        isFastScrolling = true;
+        isSwapping = false;
+        labelTimeline?.kill();
+        labelTimeline = gsap.to(label, {
+          autoAlpha: 0,
+          y: 10,
+          filter: "blur(5px)",
+          duration: 0.2,
+          ease: "power2.out",
+          overwrite: true,
+        });
+      };
+
+      const swapLabel = (nextIndex) => {
+        queuedIndex = nextIndex;
+
+        if (
+          isFastScrolling ||
+          isSwapping ||
+          nextIndex === displayedIndexRef.current
+        ) {
+          return;
+        }
+
+        isSwapping = true;
+        labelTimeline?.kill();
+        labelTimeline = gsap
+          .timeline()
+          .to(label, {
+            autoAlpha: 0,
+            y: -7,
+            filter: "blur(3px)",
+            duration: 0.16,
+            ease: "power2.in",
+          })
+          .call(() => {
+            displayedIndexRef.current = queuedIndex;
+            setActiveIndex(queuedIndex);
+          })
+          .set(label, { y: 9 })
+          .to(label, {
+            autoAlpha: 1,
+            y: 0,
+            filter: "blur(0px)",
+            duration: 0.38,
+            ease: "power3.out",
+          })
+          .call(() => {
+            isSwapping = false;
+            if (queuedIndex !== displayedIndexRef.current) {
+              swapLabel(queuedIndex);
+            }
+          });
+      };
+
       const trigger = ScrollTrigger.create({
         trigger: sectionRef.current,
         start: "top top",
@@ -240,12 +371,34 @@ export default function ArtSpiral({ works }) {
         scrub: 1.15,
         onUpdate: (self) => {
           const focus = self.progress * (works.length - 1);
+          const nextIndex = Math.round(focus);
+          const velocity = Math.abs(self.getVelocity());
+
           targetFocusRef.current = focus;
-          setActiveIndex(Math.round(focus));
+          queuedIndex = nextIndex;
+          setFocusedIndex(nextIndex);
+
+          if (velocity > 1050) {
+            hideForFastScroll();
+            scheduleSettle(180);
+            return;
+          }
+
+          if (isFastScrolling) {
+            scheduleSettle(velocity < 260 ? 80 : 150);
+            return;
+          }
+
+          swapLabel(nextIndex);
         },
       });
 
-      return () => trigger.kill();
+      return () => {
+        trigger.kill();
+        labelTimeline?.kill();
+        window.clearTimeout(settleTimer);
+        window.cancelAnimationFrame(revealFrame);
+      };
     },
     { scope: sectionRef, dependencies: [canInitialize, works.length] },
   );
@@ -544,28 +697,33 @@ export default function ArtSpiral({ works }) {
         return true;
       }
 
-      const currentPosition = card.cardGroup.position.clone();
       const cameraDistance = isMobile ? 11.4 : 8.5;
       const visibleHeight =
         2 * cameraDistance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
       const visibleWidth = visibleHeight * camera.aspect;
       const targetScale = Math.min(
-        isMobile ? 0.92 : 1.04,
-        (visibleWidth * (isMobile ? 0.72 : 0.46)) / flatCard.width,
-        (visibleHeight * 0.58) / flatCard.height,
+        isMobile ? 1.55 : 1.85,
+        (visibleWidth * (isMobile ? 0.9 : 0.84)) / flatCard.width,
+        (visibleHeight * (isMobile ? 0.76 : 0.82)) / flatCard.height,
       );
       const targetPosition = {
-        x: THREE.MathUtils.clamp(currentPosition.x * 0.34, -1.65, 1.65),
-        y:
-          camera.position.y +
-          THREE.MathUtils.clamp(
-            (currentPosition.y - camera.position.y) * 0.34,
-            -1.1,
-            1.1,
-          ),
+        x: 0,
+        y: camera.position.y,
         z: camera.position.z - cameraDistance,
       };
       const flattenState = { progress: 0 };
+      const focusStart = 0.08;
+      const focusDuration = isMobile ? 0.9 : 1.08;
+      const blankPauseDuration = 0.65;
+      const backgroundFadeDuration = 0.5;
+      const backgroundFadeStart = focusStart + focusDuration * 0.2;
+      const transformationEnd = focusStart + focusDuration;
+      const backgroundFadeEnd = backgroundFadeStart + backgroundFadeDuration;
+      const handoffAt =
+        Math.max(transformationEnd, backgroundFadeEnd) + blankPauseDuration;
+      const spiralUi = stageRef.current?.querySelectorAll(
+        "[data-art-spiral-ui]",
+      );
 
       for (const otherCard of cards) {
         if (otherCard === card) continue;
@@ -581,10 +739,39 @@ export default function ArtSpiral({ works }) {
       transitionTimeline
         .to(
           motionState,
-          { focusEase: 0.012, duration: 0.2, ease: "power2.out" },
+          { focusEase: 0.012, duration: 0.28, ease: "power2.out" },
           0,
         )
-        .to(ribbon.position, { z: -2, duration: 0.4, ease: "power3.out" }, 0.1);
+        .to(
+          canvas,
+          {
+            filter: "drop-shadow(0 2.5rem 3.5rem rgba(5, 5, 5, 0.24))",
+            duration: 0.42,
+            ease: "power2.inOut",
+          },
+          backgroundFadeStart,
+        )
+        .to(
+          ribbon.position,
+          {
+            z: -2.8,
+            duration: backgroundFadeDuration,
+            ease: "power3.inOut",
+          },
+          backgroundFadeStart,
+        );
+
+      if (spiralUi?.length) {
+        transitionTimeline.to(
+          spiralUi,
+          {
+            autoAlpha: 0,
+            duration: backgroundFadeDuration * 0.8,
+            ease: "power2.inOut",
+          },
+          backgroundFadeStart,
+        );
+      }
 
       for (const otherCard of cards) {
         if (otherCard === card) continue;
@@ -593,11 +780,11 @@ export default function ArtSpiral({ works }) {
           .to(
             [otherCard.frontMaterial, otherCard.backMaterial],
             {
-              opacity: 0.06,
-              duration: 0.4,
-              ease: "power2.out",
+              opacity: 0,
+              duration: backgroundFadeDuration,
+              ease: "power2.inOut",
             },
-            0.1,
+            backgroundFadeStart,
           )
           .to(
             otherCard.cardGroup.scale,
@@ -605,10 +792,10 @@ export default function ArtSpiral({ works }) {
               x: 0.94,
               y: 0.94,
               z: 0.94,
-              duration: 0.4,
-              ease: "power2.out",
+              duration: backgroundFadeDuration,
+              ease: "power2.inOut",
             },
-            0.1,
+            backgroundFadeStart,
           );
       }
 
@@ -617,10 +804,10 @@ export default function ArtSpiral({ works }) {
           card.cardGroup.position,
           {
             ...targetPosition,
-            duration: isMobile ? 0.35 : 0.5,
+            duration: focusDuration,
             ease: "expo.inOut",
           },
-          0.15,
+          focusStart,
         )
         .to(
           card.cardGroup.rotation,
@@ -628,10 +815,10 @@ export default function ArtSpiral({ works }) {
             x: 0,
             y: 0,
             z: 0,
-            duration: isMobile ? 0.35 : 0.5,
+            duration: focusDuration,
             ease: "expo.inOut",
           },
-          0.15,
+          focusStart,
         )
         .to(
           card.cardGroup.scale,
@@ -639,17 +826,17 @@ export default function ArtSpiral({ works }) {
             x: targetScale,
             y: targetScale,
             z: targetScale,
-            duration: isMobile ? 0.35 : 0.5,
+            duration: focusDuration,
             ease: "expo.inOut",
           },
-          0.15,
+          focusStart,
         )
         .to(
           flattenState,
           {
             progress: 1,
-            duration: isMobile ? 0.35 : 0.5,
-            ease: "expo.inOut",
+            duration: focusDuration,
+            ease: "power2.inOut",
             onUpdate: () => {
               morphCardGeometry(
                 card.geometry,
@@ -659,9 +846,9 @@ export default function ArtSpiral({ works }) {
               );
             },
           },
-          0.15,
+          focusStart,
         )
-        .call(startSharedTransition, [], isMobile ? 0.48 : 0.65);
+        .call(startSharedTransition, [], handoffAt);
 
       return true;
     };
@@ -811,24 +998,34 @@ export default function ArtSpiral({ works }) {
         ref={stageRef}
         className="sticky top-14 h-[calc(100svh-3.5rem)] overflow-hidden sm:top-16 sm:h-[calc(100svh-4rem)]"
       >
-        <div className="absolute inset-x-3 top-4 z-20 flex items-start justify-between border-t border-ink/35 pt-3 sm:inset-x-4">
-          <p className="eyebrow">( À voir )</p>
+        <div
+          data-art-spiral-ui
+          className="absolute inset-x-3 top-4 z-20 flex items-start justify-between border-t border-ink/35 pt-3 sm:inset-x-4"
+        >
+          <p className="eyebrow">{t("home.spiral.label")}</p>
           <p className="eyebrow text-right text-ink/55">
-            {String(activeIndex + 1).padStart(2, "0")} /{" "}
+            {String(focusedIndex + 1).padStart(2, "0")} /{" "}
             {String(works.length).padStart(2, "0")}
             <br />
-            Faites défiler ↓
+            {t("home.spiral.scroll")}
           </p>
         </div>
 
         <canvas
           ref={canvasRef}
           className="absolute inset-0 z-10 size-full"
-          aria-label={`Ruban 3D de ${works.length} œuvres de la collection`}
+          aria-label={t("home.spiral.aria", { count: works.length })}
         />
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-4 z-20 flex items-end justify-between sm:inset-x-4">
-          <div className="max-w-[56vw]">
+        <div
+          data-art-spiral-ui
+          className="pointer-events-none absolute inset-x-3 bottom-4 z-20 flex items-end justify-between sm:inset-x-4"
+        >
+          <div
+            ref={artworkLabelRef}
+            aria-live="polite"
+            className="max-w-[56vw] will-change-[transform,opacity,filter]"
+          >
             <p className="eyebrow text-ink/50">
               {String(activeIndex + 1).padStart(2, "0")} · {activeWork.artist}
             </p>
@@ -841,7 +1038,7 @@ export default function ArtSpiral({ works }) {
             href={`/paintings/${activeWork.slug}`}
             onClick={handleActiveWorkClick}
           >
-            Voir l’œuvre ↗
+            {t("home.spiral.view")}
           </Link>
         </div>
 

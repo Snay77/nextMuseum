@@ -4,24 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/app/_lib/auth-client";
 import {
-  TICKET_OPTIONS as options,
+  TICKET_OPTIONS as baseOptions,
+  TICKET_TYPES as baseTickets,
   PENDING_TICKET_KEY,
-  TICKET_TYPES as tickets,
 } from "@/app/_lib/ticketing";
-
-const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
-const monthFormatter = new Intl.DateTimeFormat("fr-FR", {
-  month: "long",
-  year: "numeric",
-});
-
-const selectedDateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+import { useI18n } from "@/app/i18n/I18nProvider";
+import { localizeHref } from "@/app/i18n/routing";
 
 function parseDateKey(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -76,6 +64,23 @@ function getCalendarDays(monthDate) {
 }
 
 function DateSelector({ initialDate, selectedDate, onSelect }) {
+  const { dictionary, locale, t } = useI18n();
+  const dateLocale = locale === "fr" ? "fr-FR" : "en-GB";
+  const monthFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(dateLocale, { month: "long", year: "numeric" }),
+    [dateLocale],
+  );
+  const selectedDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(dateLocale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    [dateLocale],
+  );
   const initialMonth = useMemo(
     () => startOfMonth(parseDateKey(initialDate)),
     [initialDate],
@@ -93,9 +98,9 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
     <section className="mb-16 border-b border-ink pb-16">
       <div className="mb-7 grid gap-6 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
-          <p className="eyebrow mb-3 text-ink/45">01 · Date</p>
+          <p className="eyebrow mb-3 text-ink/45">01 · {t("ticketing.date")}</p>
           <h2 className="tight-type text-4xl font-bold sm:text-6xl">
-            Votre venue
+            {t("ticketing.yourArrival")}
           </h2>
         </div>
         <p className="max-w-xs text-sm leading-snug text-ink/55 sm:text-right">
@@ -113,7 +118,7 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
               type="button"
               onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
               disabled={!canGoBack}
-              aria-label="Mois précédent"
+              aria-label={t("ticketing.previousMonth")}
               className="grid size-10 cursor-pointer place-items-center rounded-full border border-ink text-lg transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-20"
             >
               ←
@@ -122,7 +127,7 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
               type="button"
               onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
               disabled={!canGoForward}
-              aria-label="Mois suivant"
+              aria-label={t("ticketing.nextMonth")}
               className="grid size-10 cursor-pointer place-items-center rounded-full border border-ink text-lg transition-colors hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:opacity-20"
             >
               →
@@ -131,7 +136,7 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
         </div>
 
         <div className="grid grid-cols-7 border-b border-ink bg-ink text-paper">
-          {weekDays.map((day) => (
+          {dictionary.ticketing.weekDays.map((day) => (
             <div
               key={day}
               className="py-2 text-center font-mono text-[0.6rem] uppercase tracking-[0.08em]"
@@ -167,8 +172,8 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
                 type="button"
                 disabled={isDisabled}
                 aria-pressed={isSelected}
-                aria-label={`${selectedDateFormatter.format(date)}${isClosed ? ", musée fermé" : ""}`}
-                title={isClosed ? "Musée fermé le lundi" : undefined}
+                aria-label={`${selectedDateFormatter.format(date)}${isClosed ? `, ${t("ticketing.museumClosed")}` : ""}`}
+                title={isClosed ? t("ticketing.closedMonday") : undefined}
                 onClick={() => onSelect(dateKey)}
                 className={`group relative flex aspect-square cursor-pointer flex-col justify-between border-b border-r border-ink/15 p-2 text-left transition-colors sm:aspect-auto sm:min-h-24 sm:p-3 ${
                   isSelected
@@ -177,7 +182,7 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
                 } disabled:cursor-not-allowed disabled:bg-ink/[0.035] disabled:text-ink/25`}
               >
                 <span className="font-mono text-[0.6rem] uppercase tracking-[0.06em] opacity-60">
-                  {isClosed ? "Fermé" : "Ouvert"}
+                  {isClosed ? t("ticketing.closed") : t("ticketing.open")}
                 </span>
                 <span className="self-end text-xl font-bold tracking-[-0.05em] sm:text-3xl">
                   {date.getDate()}
@@ -198,7 +203,35 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
 
 export default function TicketingForm({ initialDate }) {
   const router = useRouter();
+  const { dictionary, locale, t } = useI18n();
   const { data: session, isPending: isSessionPending } = useSession();
+  const dateLocale = locale === "fr" ? "fr-FR" : "en-GB";
+  const selectedDateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(dateLocale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    [dateLocale],
+  );
+  const tickets = useMemo(
+    () =>
+      baseTickets.map((ticket) => {
+        const [label, detail] = dictionary.ticketing.types[ticket.id];
+        return { ...ticket, label, detail };
+      }),
+    [dictionary],
+  );
+  const options = useMemo(
+    () =>
+      baseOptions.map((option) => {
+        const [label, detail] = dictionary.ticketing.optionTypes[option.id];
+        return { ...option, label, detail };
+      }),
+    [dictionary],
+  );
   const firstAvailableDate = getFirstAvailableDate(initialDate);
   const [selectedDate, setSelectedDate] = useState(firstAvailableDate);
   const [quantities, setQuantities] = useState(() =>
@@ -246,7 +279,7 @@ export default function TicketingForm({ initialDate }) {
     } catch {
       sessionStorage.removeItem(PENDING_TICKET_KEY);
     }
-  }, [firstAvailableDate, initialDate]);
+  }, [firstAvailableDate, initialDate, options, tickets]);
 
   const ticketCount = Object.values(quantities).reduce(
     (sum, value) => sum + value,
@@ -264,7 +297,7 @@ export default function TicketingForm({ initialDate }) {
   const total = ticketTotal + optionTotal;
   const selectedTickets = useMemo(
     () => tickets.filter((ticket) => quantities[ticket.id] > 0),
-    [quantities],
+    [quantities, tickets],
   );
 
   function changeQuantity(id, amount) {
@@ -286,7 +319,9 @@ export default function TicketingForm({ initialDate }) {
 
     if (!session) {
       sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
-      router.push("/login?callbackUrl=%2Fbilleterie%3Fresume%3D1");
+      router.push(
+        `${localizeHref("/login", locale)}?callbackUrl=%2Fbilleterie%3Fresume%3D1`,
+      );
       return;
     }
 
@@ -305,17 +340,18 @@ export default function TicketingForm({ initialDate }) {
 
       if (response.status === 401) {
         sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
-        router.push("/login?callbackUrl=%2Fbilleterie%3Fresume%3D1");
+        router.push(
+          `${localizeHref("/login", locale)}?callbackUrl=%2Fbilleterie%3Fresume%3D1`,
+        );
         return;
       }
-      if (!response.ok)
-        throw new Error(payload.error || "La réservation a échoué.");
+      if (!response.ok) throw new Error(t("ticketing.failed"));
 
       sessionStorage.removeItem(PENDING_TICKET_KEY);
       setConfirmedBooking(payload.booking);
       router.refresh();
     } catch (error) {
-      setSubmitError(error.message || "La réservation a échoué.");
+      setSubmitError(error.message || t("ticketing.failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -332,12 +368,16 @@ export default function TicketingForm({ initialDate }) {
 
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <p className="eyebrow mb-3 text-ink/45">02 · Entrées</p>
+            <p className="eyebrow mb-3 text-ink/45">
+              02 · {t("ticketing.entries")}
+            </p>
             <h2 className="tight-type text-4xl font-bold sm:text-6xl">
-              Vos billets
+              {t("ticketing.yourTickets")}
             </h2>
           </div>
-          <p className="eyebrow hidden sm:block">Prix / personne</p>
+          <p className="eyebrow hidden sm:block">
+            {t("ticketing.pricePerPerson")}
+          </p>
         </div>
 
         <div className="border-t border-ink">
@@ -355,28 +395,30 @@ export default function TicketingForm({ initialDate }) {
                 </h3>
                 <p className="mt-1 text-sm text-ink/50">
                   {ticket.detail} ·{" "}
-                  {ticket.price === 0 ? "Gratuit" : `${ticket.price} €`}
+                  {ticket.price === 0
+                    ? t("ticketing.free")
+                    : `${ticket.price} €`}
                 </p>
               </div>
               <div className="flex items-center rounded-full border border-ink">
                 <button
                   type="button"
                   onClick={() => changeQuantity(ticket.id, -1)}
-                  aria-label={`Retirer ${ticket.label}`}
+                  aria-label={t("ticketing.remove", { ticket: ticket.label })}
                   className="grid size-10 cursor-pointer place-items-center rounded-full text-xl transition-colors hover:bg-ink hover:text-paper"
                 >
                   −
                 </button>
                 <output
                   className="w-8 text-center text-sm font-bold"
-                  aria-label={`Quantité ${ticket.label}`}
+                  aria-label={t("ticketing.quantity", { ticket: ticket.label })}
                 >
                   {quantities[ticket.id]}
                 </output>
                 <button
                   type="button"
                   onClick={() => changeQuantity(ticket.id, 1)}
-                  aria-label={`Ajouter ${ticket.label}`}
+                  aria-label={t("ticketing.add", { ticket: ticket.label })}
                   className="grid size-10 cursor-pointer place-items-center rounded-full text-xl transition-colors hover:bg-blue hover:text-white"
                 >
                   +
@@ -387,9 +429,11 @@ export default function TicketingForm({ initialDate }) {
         </div>
 
         <div className="mt-16">
-          <p className="eyebrow mb-3 text-ink/45">03 · Options</p>
+          <p className="eyebrow mb-3 text-ink/45">
+            03 · {t("ticketing.options")}
+          </p>
           <h2 className="tight-type mb-6 text-4xl font-bold sm:text-6xl">
-            Plus de visite
+            {t("ticketing.moreVisit")}
           </h2>
           <div className="grid border-l border-t border-ink sm:grid-cols-2">
             {options.map((option) => {
@@ -410,7 +454,9 @@ export default function TicketingForm({ initialDate }) {
                   <span className="flex h-full flex-col justify-between gap-10">
                     <span className="flex justify-between gap-4">
                       <span className="eyebrow">
-                        {active ? "Ajouté" : "Ajouter"}
+                        {active
+                          ? t("ticketing.added")
+                          : t("ticketing.addOption")}
                       </span>
                       <span className="eyebrow">+ {option.price} €</span>
                     </span>
@@ -432,16 +478,20 @@ export default function TicketingForm({ initialDate }) {
 
       <aside className="sticky top-20 bg-blue p-5 text-white sm:p-6">
         <div className="flex items-center justify-between border-b border-white/50 pb-3">
-          <p className="eyebrow">Votre visite</p>
+          <p className="eyebrow">{t("ticketing.yourVisit")}</p>
           <p className="eyebrow">
-            {String(ticketCount).padStart(2, "0")} billet
-            {ticketCount !== 1 ? "s" : ""}
+            {String(ticketCount).padStart(2, "0")}{" "}
+            {ticketCount === 1 ? t("ticketing.ticket") : t("ticketing.tickets")}
           </p>
         </div>
-        <h2 className="tight-type mt-8 text-5xl font-bold">Récap.</h2>
+        <h2 className="tight-type mt-8 text-5xl font-bold">
+          {t("ticketing.recap")}
+        </h2>
 
         <div className="mt-6 border-y border-white/50 py-4">
-          <p className="eyebrow mb-2 text-white/60">Date de visite</p>
+          <p className="eyebrow mb-2 text-white/60">
+            {t("ticketing.visitDate")}
+          </p>
           <p className="text-sm capitalize leading-snug">
             {selectedDateFormatter.format(parseDateKey(selectedDate))}
           </p>
@@ -462,7 +512,7 @@ export default function TicketingForm({ initialDate }) {
             ))
           ) : (
             <p className="text-sm text-white/65">
-              Sélectionnez vos billets pour commencer.
+              {t("ticketing.selectTickets")}
             </p>
           )}
           {options
@@ -479,23 +529,25 @@ export default function TicketingForm({ initialDate }) {
         </div>
 
         <div className="flex items-end justify-between gap-4 py-5">
-          <span className="eyebrow">Total</span>
+          <span className="eyebrow">{t("ticketing.total")}</span>
           <output className="text-5xl font-bold tracking-[-0.06em]">
             {total} €
           </output>
         </div>
         {confirmedBooking ? (
           <div className="border-y border-white/50 py-5">
-            <p className="eyebrow text-white/60">Réservation confirmée</p>
+            <p className="eyebrow text-white/60">{t("ticketing.confirmed")}</p>
             <p className="mt-2 text-2xl font-bold">
               NM—{confirmedBooking.id.slice(0, 8).toUpperCase()}
             </p>
             <button
               type="button"
-              onClick={() => router.push("/account#mes-billets")}
+              onClick={() =>
+                router.push(localizeHref("/account#mes-billets", locale))
+              }
               className="mt-5 w-full cursor-pointer rounded-full bg-white px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-white"
             >
-              Voir dans mon compte →
+              {t("ticketing.account")}
             </button>
           </div>
         ) : (
@@ -507,10 +559,10 @@ export default function TicketingForm({ initialDate }) {
             className="w-full cursor-pointer rounded-full bg-white px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
           >
             {isSubmitting
-              ? "Confirmation…"
+              ? t("ticketing.confirmation")
               : session
-                ? "Confirmer la réservation →"
-                : "Se connecter et continuer →"}
+                ? t("ticketing.confirm")
+                : t("ticketing.signIn")}
           </button>
         )}
         {submitError ? (
@@ -519,7 +571,7 @@ export default function TicketingForm({ initialDate }) {
           </p>
         ) : null}
         <p className="mt-4 text-center text-xs text-white/55">
-          Paiement sécurisé · Billets échangeables
+          {t("ticketing.secure")}
         </p>
       </aside>
     </div>

@@ -5,6 +5,8 @@ import gsap from "gsap";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
+import { localizeHref, stripLocaleFromPathname } from "../../i18n/routing";
 import {
   LOCOMOTIVE_RESIZE_EVENT,
   LOCOMOTIVE_SCROLL_TO_EVENT,
@@ -108,7 +110,13 @@ export default function ArtworkTransitionOverlay() {
   const coverImageRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
+  const { locale } = useI18n();
   const destinationUrl = useStore((state) => state.destinationUrl);
+  const localizedDestinationUrl = localizeHref(destinationUrl, locale);
+  const routePathname = stripLocaleFromPathname(pathname);
+  const destinationPathname = stripLocaleFromPathname(
+    getPathname(destinationUrl),
+  );
   const transitionType = useStore((state) => state.transitionType);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
   const artworkTransition = useStore((state) => state.artworkTransition);
@@ -154,6 +162,8 @@ export default function ArtworkTransitionOverlay() {
             `[data-artwork-frame][data-artwork-slug="${CSS.escape(artworkTransition.slug)}"]`,
           )
         : null;
+      const sourceArtworkVisual =
+        sourceArtworkFrame?.closest(".artwork-shadow") || sourceArtworkFrame;
       const {
         sourceRect,
         sourceRotation = 0,
@@ -183,7 +193,9 @@ export default function ArtworkTransitionOverlay() {
         objectPosition,
         scale: isReturn || isSpiral ? 1 : 1.18,
       });
-      if (sourceArtworkFrame) gsap.set(sourceArtworkFrame, { autoAlpha: 0 });
+      if (sourceArtworkVisual) {
+        gsap.set(sourceArtworkVisual, { autoAlpha: 0 });
+      }
 
       const timeline = gsap.timeline();
 
@@ -259,7 +271,7 @@ export default function ArtworkTransitionOverlay() {
 
         if (artworkTransition.navigationMode !== "history") {
           timeline.call(
-            () => router.push(destinationUrl, { scroll: false }),
+            () => router.push(localizedDestinationUrl, { scroll: false }),
             [],
             routeAt,
           );
@@ -288,7 +300,7 @@ export default function ArtworkTransitionOverlay() {
               0,
             );
           }
-        } else if (sourcePage) {
+        } else if (sourcePage && !isSpiral) {
           timeline.to(
             sourcePage,
             {
@@ -300,6 +312,28 @@ export default function ArtworkTransitionOverlay() {
           );
         }
 
+        if (isSpiral) {
+          timeline
+            .to(
+              sourcePage,
+              {
+                autoAlpha: 0,
+                duration: reduceMotion ? 0.08 : 0.24,
+                ease: "power2.inOut",
+              },
+              0,
+            )
+            .to(
+              backdrop,
+              {
+                autoAlpha: 1,
+                duration: reduceMotion ? 0.08 : 0.24,
+                ease: "power2.inOut",
+              },
+              0,
+            );
+        }
+
         if (artworkTransition.navigationMode !== "history") {
           timeline.call(
             () => {
@@ -307,13 +341,13 @@ export default function ArtworkTransitionOverlay() {
                 router.back();
               } else if (isSpiral) {
                 window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
-                router.push(destinationUrl, { scroll: true });
+                router.push(localizedDestinationUrl, { scroll: true });
               } else {
-                router.push(destinationUrl, { scroll: false });
+                router.push(localizedDestinationUrl, { scroll: false });
               }
             },
             [],
-            reduceMotion ? 0.04 : isReturn ? 0.1 : 0.16,
+            reduceMotion ? 0.04 : isReturn ? 0.1 : isSpiral ? 0.22 : 0.16,
           );
         }
       }
@@ -322,7 +356,11 @@ export default function ArtworkTransitionOverlay() {
         const store = useStore.getState();
 
         if (store.artworkTransition?.id !== artworkTransition.id) return;
-        if (window.location.pathname === getPathname(destinationUrl)) return;
+        if (
+          stripLocaleFromPathname(window.location.pathname) ===
+          destinationPathname
+        )
+          return;
 
         gsap.to(overlay, {
           autoAlpha: 0,
@@ -349,8 +387,8 @@ export default function ArtworkTransitionOverlay() {
             clearProps: "opacity,visibility,transform",
           });
         }
-        if (sourceArtworkFrame) {
-          gsap.set(sourceArtworkFrame, {
+        if (sourceArtworkVisual) {
+          gsap.set(sourceArtworkVisual, {
             clearProps: "opacity,visibility",
           });
         }
@@ -370,7 +408,7 @@ export default function ArtworkTransitionOverlay() {
         !isTransitionActive ||
         !artworkTransition ||
         artworkTransition.direction === "to-collection" ||
-        pathname !== getPathname(destinationUrl)
+        routePathname !== destinationPathname
       ) {
         return;
       }
@@ -547,7 +585,7 @@ export default function ArtworkTransitionOverlay() {
         !isTransitionActive ||
         !artworkTransition ||
         artworkTransition.direction !== "to-collection" ||
-        pathname !== getPathname(destinationUrl)
+        routePathname !== destinationPathname
       ) {
         return;
       }

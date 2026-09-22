@@ -5,38 +5,15 @@ import gsap from "gsap";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
-import { LOCOMOTIVE_SCROLL_TOP_EVENT } from "../layout/SmoothScroll";
+import { useI18n } from "../../i18n/I18nProvider";
+import { localizeHref, stripLocaleFromPathname } from "../../i18n/routing";
+import {
+  LOCOMOTIVE_SCROLL_TOP_EVENT,
+  LOCOMOTIVE_START_EVENT,
+  LOCOMOTIVE_STOP_EVENT,
+} from "../layout/SmoothScroll";
 
 const getPathname = (url) => url?.split(/[?#]/)[0] || "";
-
-const getContainedImageRect = (containerRect, naturalWidth, naturalHeight) => {
-  if (!naturalWidth || !naturalHeight) return containerRect;
-
-  const imageRatio = naturalWidth / naturalHeight;
-  const containerRatio = containerRect.width / containerRect.height;
-
-  if (imageRatio > containerRatio) {
-    const width = containerRect.width;
-    const height = width / imageRatio;
-
-    return {
-      left: containerRect.left,
-      top: containerRect.top + (containerRect.height - height) / 2,
-      width,
-      height,
-    };
-  }
-
-  const height = containerRect.height;
-  const width = height * imageRatio;
-
-  return {
-    left: containerRect.left + (containerRect.width - width) / 2,
-    top: containerRect.top,
-    width,
-    height,
-  };
-};
 
 const setScrollLock = (isLocked) => {
   const overflow = isLocked ? "hidden" : "";
@@ -44,30 +21,51 @@ const setScrollLock = (isLocked) => {
   document.body.style.overflow = overflow;
 };
 
-const finishRailTransition = (hero, copy) => {
+const getTitleLetters = (copy) =>
+  Array.from(copy?.querySelectorAll("[data-animated-title-letter]") ?? []);
+
+const getCopyItems = (page) =>
+  Array.from(
+    page?.querySelectorAll(
+      "[data-artwork-copy-item], [data-artwork-hero-ui]",
+    ) ?? [],
+  );
+
+const clearAnimatedElements = (hero, copyItems, overlay) => {
+  gsap.set([hero, ...copyItems].filter(Boolean), {
+    clearProps: "opacity,visibility,transform,clipPath",
+  });
+  gsap.set(overlay, {
+    autoAlpha: 0,
+    pointerEvents: "none",
+    visibility: "hidden",
+  });
+};
+
+const finishRailTransition = (hero, copyItems, overlay) => {
   const store = useStore.getState();
 
-  gsap.set([hero, copy].filter(Boolean), {
-    clearProps: "opacity,visibility,transform",
-  });
+  clearAnimatedElements(hero, copyItems, overlay);
   setScrollLock(false);
   store.setIsTransitionActive(false);
   store.setTransitionType("default");
   store.setDestinationUrl("");
   store.setArtworkNavigation(null);
+  window.dispatchEvent(new Event(LOCOMOTIVE_START_EVENT));
 };
 
 export default function ArtworkRailTransition() {
   const overlayRef = useRef(null);
-  const backgroundRef = useRef(null);
-  const outgoingRef = useRef(null);
-  const incomingRef = useRef(null);
-  const incomingImageRef = useRef(null);
-  const copyRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
+  const { locale } = useI18n();
   const transitionType = useStore((state) => state.transitionType);
   const destinationUrl = useStore((state) => state.destinationUrl);
+  const localizedDestinationUrl = localizeHref(destinationUrl, locale);
+  const routePathname = stripLocaleFromPathname(pathname);
+  const destinationPathname = stripLocaleFromPathname(
+    getPathname(destinationUrl),
+  );
   const isTransitionActive = useStore((state) => state.isTransitionActive);
   const artworkNavigation = useStore((state) => state.artworkNavigation);
 
@@ -78,80 +76,146 @@ export default function ArtworkRailTransition() {
         !isTransitionActive ||
         !artworkNavigation ||
         !destinationUrl ||
-        pathname !== `/paintings/${artworkNavigation.fromSlug}`
+        routePathname !== `/paintings/${artworkNavigation.fromSlug}`
       ) {
         return;
       }
 
       const overlay = overlayRef.current;
-      const background = backgroundRef.current;
-      const outgoing = outgoingRef.current;
-      const incoming = incomingRef.current;
-      const copy = copyRef.current;
+      const sourcePage = document.querySelector("[data-artwork-detail-page]");
+      const sourceHero = document.querySelector(
+        `[data-artwork-hero="${CSS.escape(artworkNavigation.fromSlug)}"]`,
+      );
+      const sourceCopy = document.querySelector(
+        `[data-artwork-hero-copy="${CSS.escape(artworkNavigation.fromSlug)}"]`,
+      );
+
+      if (!sourcePage || !sourceHero || !sourceCopy) {
+        router.push(localizedDestinationUrl, { scroll: false });
+        return;
+      }
+
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
-      const exitX = artworkNavigation.direction === "previous" ? 18 : -18;
-      const exitClip =
-        artworkNavigation.direction === "previous"
-          ? "inset(0 0 0 16%)"
-          : "inset(0 16% 0 0)";
+      const titleLetters = getTitleLetters(sourceCopy);
+      const copyItems = getCopyItems(sourcePage);
+      let timeline;
+      let firstFrame;
+      let secondFrame;
+      let arrivalFrame;
+      let cancelled = false;
 
-      setScrollLock(true);
       gsap.set(overlay, {
         autoAlpha: 1,
         pointerEvents: "auto",
         visibility: "visible",
       });
-      gsap.set(background, { autoAlpha: 1 });
-      gsap.set(outgoing, {
-        autoAlpha: 1,
-        clipPath: "inset(0 0 0 0)",
-        left: artworkNavigation.sourceRect.left,
-        top: artworkNavigation.sourceRect.top,
-        width: artworkNavigation.sourceRect.width,
-        height: artworkNavigation.sourceRect.height,
-        xPercent: 0,
+
+      const startExit = () => {
+        if (cancelled) return;
+
+        window.dispatchEvent(new Event(LOCOMOTIVE_STOP_EVENT));
+        setScrollLock(true);
+        timeline = gsap.timeline();
+
+        if (reduceMotion) {
+          timeline
+            .to([sourceHero, sourceCopy], {
+              autoAlpha: 0,
+              duration: 0.16,
+              ease: "power2.out",
+            })
+            .call(() =>
+              router.push(localizedDestinationUrl, { scroll: false }),
+            );
+          return;
+        }
+
+        timeline
+          .to(
+            titleLetters,
+            {
+              autoAlpha: 0,
+              rotateX: -78,
+              yPercent: 135,
+              transformOrigin: "50% 100%",
+              duration: 0.52,
+              ease: "expo.in",
+              stagger: { each: 0.018, from: "end" },
+            },
+            0,
+          )
+          .to(
+            copyItems,
+            {
+              autoAlpha: 0,
+              y: 18,
+              duration: 0.42,
+              ease: "power3.in",
+              stagger: { each: 0.035, from: "end" },
+            },
+            0.04,
+          )
+          .to(
+            sourceHero,
+            {
+              clipPath: "inset(0 100% 0 0)",
+              duration: 0.82,
+              ease: "power4.inOut",
+            },
+            0.14,
+          )
+          .call(
+            () => router.push(localizedDestinationUrl, { scroll: false }),
+            [],
+            1.02,
+          );
+      };
+
+      const startExitAtTop = () => {
+        if (cancelled) return;
+
+        if (window.scrollY > 12) {
+          arrivalFrame = window.requestAnimationFrame(startExitAtTop);
+          return;
+        }
+
+        arrivalFrame = window.requestAnimationFrame(startExit);
+      };
+
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (reduceMotion || window.scrollY < 4) {
+            window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
+            startExitAtTop();
+            return;
+          }
+
+          const scrollDuration = Math.min(
+            1.35,
+            Math.max(0.85, window.scrollY / 3200),
+          );
+
+          window.dispatchEvent(
+            new CustomEvent(LOCOMOTIVE_SCROLL_TOP_EVENT, {
+              detail: {
+                animated: true,
+                duration: scrollDuration,
+                onComplete: startExitAtTop,
+              },
+            }),
+          );
+        });
       });
-      gsap.set(incoming, { autoAlpha: 0 });
-      gsap.set(copy, { autoAlpha: 1, clipPath: "inset(0 0 0 0)" });
 
-      const timeline = gsap.timeline();
-
-      timeline
-        .to(
-          copy,
-          {
-            autoAlpha: 0,
-            clipPath: "inset(0 0 100% 0)",
-            y: -18,
-            duration: reduceMotion ? 0.12 : 0.25,
-            ease: "power3.in",
-          },
-          0,
-        )
-        .to(
-          outgoing,
-          {
-            autoAlpha: reduceMotion ? 0 : 0.28,
-            xPercent: reduceMotion ? 0 : exitX,
-            clipPath: reduceMotion ? "inset(0 0 0 0)" : exitClip,
-            duration: reduceMotion ? 0.16 : 0.7,
-            ease: reduceMotion ? "power2.out" : "expo.inOut",
-          },
-          reduceMotion ? 0 : 0.05,
-        );
-
-      timeline.call(
-        () => {
-          window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
-          router.push(destinationUrl, { scroll: false });
-        },
-        [],
-        reduceMotion ? 0.04 : 0.15,
-      );
-
-      return () => timeline.kill();
+      return () => {
+        cancelled = true;
+        window.cancelAnimationFrame(firstFrame);
+        window.cancelAnimationFrame(secondFrame);
+        window.cancelAnimationFrame(arrivalFrame);
+        timeline?.kill();
+      };
     },
     {
       dependencies: [artworkNavigation?.id],
@@ -164,16 +228,13 @@ export default function ArtworkRailTransition() {
       if (
         transitionType !== "artwork-rail" ||
         !artworkNavigation ||
-        pathname !== getPathname(destinationUrl)
+        routePathname !== destinationPathname
       ) {
         return;
       }
 
       const overlay = overlayRef.current;
-      const background = backgroundRef.current;
-      const outgoing = outgoingRef.current;
-      const incoming = incomingRef.current;
-      const incomingImage = incomingImageRef.current;
+      const detailPage = document.querySelector("[data-artwork-detail-page]");
       const hero = document.querySelector(
         `[data-artwork-hero="${CSS.escape(artworkNavigation.toSlug)}"]`,
       );
@@ -182,111 +243,71 @@ export default function ArtworkRailTransition() {
       );
       const heroImage = hero?.querySelector("img");
 
-      if (!hero || !heroImage) {
-        gsap.to(overlay, {
-          autoAlpha: 0,
-          duration: 0.2,
-          onComplete: () => finishRailTransition(hero, heroCopy),
-        });
+      if (!detailPage || !hero || !heroCopy || !heroImage) {
+        finishRailTransition(hero, getCopyItems(detailPage), overlay);
         return;
       }
 
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
-      const enterX = artworkNavigation.direction === "previous" ? -18 : 18;
-      const enterClip =
-        artworkNavigation.direction === "previous"
-          ? "inset(0 16% 0 0)"
-          : "inset(0 0 0 16%)";
+      const titleLetters = getTitleLetters(heroCopy);
+      const copyItems = getCopyItems(detailPage);
       let timeline;
       let firstFrame;
       let secondFrame;
-      let isCancelled = false;
+      let cancelled = false;
 
-      gsap.set(hero, { autoAlpha: 0 });
-      if (heroCopy) gsap.set(heroCopy, { autoAlpha: 0, y: 20 });
+      window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
+      gsap.set(overlay, {
+        autoAlpha: 1,
+        pointerEvents: "auto",
+        visibility: "visible",
+      });
+      gsap.set(hero, {
+        autoAlpha: reduceMotion ? 0 : 1,
+        clipPath: reduceMotion ? "inset(0 0 0 0)" : "inset(0 100% 0 0)",
+      });
+      gsap.set(copyItems, { autoAlpha: 0, y: reduceMotion ? 0 : 18 });
+      gsap.set(titleLetters, {
+        autoAlpha: 0,
+        rotateX: -78,
+        yPercent: 135,
+        transformOrigin: "50% 100%",
+      });
 
       const startEntrance = () => {
-        if (isCancelled) return;
-
-        incomingImage.src = heroImage.currentSrc || heroImage.src;
-        const targetRect = getContainedImageRect(
-          hero.getBoundingClientRect(),
-          heroImage.naturalWidth,
-          heroImage.naturalHeight,
-        );
-        const duration = reduceMotion ? 0.18 : 0.8;
-        const handoff = reduceMotion ? 0.18 : 0.82;
-
-        gsap.set(incoming, {
-          autoAlpha: reduceMotion ? 0 : 0.08,
-          clipPath: reduceMotion ? "inset(0 0 0 0)" : enterClip,
-          left: targetRect.left,
-          top: targetRect.top,
-          width: targetRect.width,
-          height: targetRect.height,
-          xPercent: reduceMotion ? 0 : enterX,
-        });
+        if (cancelled) return;
 
         timeline = gsap.timeline();
-        timeline
-          .to(
-            incoming,
-            {
-              autoAlpha: 1,
-              clipPath: "inset(0 0 0 0)",
-              xPercent: 0,
-              duration,
-              ease: reduceMotion ? "power2.out" : "expo.inOut",
-            },
-            0,
-          )
-          .to(
-            outgoing,
-            {
-              autoAlpha: 0,
-              duration: reduceMotion ? 0.12 : 0.28,
-              ease: "power2.out",
-            },
-            0,
-          )
-          .to(
-            background,
-            {
-              autoAlpha: 0,
-              duration: reduceMotion ? 0.14 : 0.32,
-              ease: "power2.out",
-            },
-            reduceMotion ? 0.08 : 0.66,
-          )
-          .set(hero, { autoAlpha: 1 }, handoff)
-          .set(incoming, { autoAlpha: 0 }, handoff);
+        timeline.call(
+          () => useStore.getState().setIsTransitionActive(false),
+          [],
+          0.02,
+        );
 
-        if (heroCopy) {
-          timeline.to(
-            heroCopy,
-            {
+        if (reduceMotion) {
+          timeline
+            .to(hero, {
               autoAlpha: 1,
-              y: 0,
-              duration: reduceMotion ? 0.18 : 0.45,
-              ease: "power3.out",
-            },
-            reduceMotion ? 0.12 : 0.75,
-          );
+              duration: 0.18,
+              ease: "power2.out",
+            })
+            .call(() => finishRailTransition(hero, copyItems, overlay));
+          return;
         }
 
         timeline
-          .call(
-            () => useStore.getState().setIsTransitionActive(false),
-            [],
-            reduceMotion ? 0.12 : 0.75,
+          .to(
+            hero,
+            {
+              clipPath: "inset(0 0% 0 0)",
+              duration: 0.92,
+              ease: "power4.inOut",
+            },
+            0.3,
           )
-          .call(
-            () => finishRailTransition(hero, heroCopy),
-            [],
-            reduceMotion ? 0.34 : 1.2,
-          );
+          .call(() => finishRailTransition(hero, copyItems, overlay), [], 1.36);
       };
 
       firstFrame = window.requestAnimationFrame(() => {
@@ -303,13 +324,11 @@ export default function ArtworkRailTransition() {
       });
 
       return () => {
-        isCancelled = true;
+        cancelled = true;
         window.cancelAnimationFrame(firstFrame);
         window.cancelAnimationFrame(secondFrame);
         timeline?.kill();
-        gsap.set([hero, heroCopy].filter(Boolean), {
-          clearProps: "opacity,visibility,transform",
-        });
+        clearAnimatedElements(hero, copyItems, overlay);
       };
     },
     {
@@ -324,52 +343,7 @@ export default function ArtworkRailTransition() {
     <div
       ref={overlayRef}
       aria-hidden="true"
-      className="pointer-events-none invisible fixed inset-0 z-45 opacity-0"
-    >
-      <div ref={backgroundRef} className="absolute inset-0 bg-paper" />
-
-      <div
-        ref={outgoingRef}
-        className="fixed overflow-hidden bg-transparent shadow-[0_2rem_5rem_rgba(5,5,5,0.24)] will-change-[transform,clip-path,opacity]"
-      >
-        {/* biome-ignore lint/performance/noImgElement: the rail reuses the browser-cached hero bitmap */}
-        <img
-          src={artworkNavigation.fromImage}
-          alt=""
-          className="absolute inset-0 size-full object-cover"
-        />
-      </div>
-
-      <div
-        ref={incomingRef}
-        className="fixed overflow-hidden bg-transparent shadow-[0_2rem_5rem_rgba(5,5,5,0.24)] will-change-[transform,clip-path,opacity]"
-      >
-        {/* biome-ignore lint/performance/noImgElement: a transient clone must match the decoded destination hero */}
-        <img
-          ref={incomingImageRef}
-          src={artworkNavigation.toImage}
-          alt=""
-          className="absolute inset-0 size-full object-cover"
-        />
-      </div>
-
-      <div
-        ref={copyRef}
-        className="absolute bottom-0 right-0 top-16 hidden w-[41%] flex-col justify-center border-l border-ink px-4 lg:flex"
-      >
-        <p className="eyebrow text-blue">{artworkNavigation.fromYear}</p>
-        <p className="tight-type mt-7 max-w-[11ch] text-[clamp(3.4rem,6.2vw,7rem)] font-bold leading-[0.88]">
-          {artworkNavigation.fromTitle}
-        </p>
-        <p className="mt-7 text-[clamp(1.3rem,2vw,2rem)] tracking-[-0.04em]">
-          {artworkNavigation.fromArtist}
-        </p>
-        {artworkNavigation.fromMovement && (
-          <p className="eyebrow mt-10 w-fit rounded-full border border-ink px-4 py-2.5">
-            {artworkNavigation.fromMovement}
-          </p>
-        )}
-      </div>
-    </div>
+      className="pointer-events-none invisible fixed inset-0 z-[15500] opacity-0"
+    />
   );
 }

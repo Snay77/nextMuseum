@@ -1,24 +1,25 @@
-import ContactForm from "../components/contact/ContactForm";
-import AnimatedHeroTitle from "../components/ui/AnimatedHeroTitle";
-import Link from "../components/ui/Link";
+import ContactForm from "@/app/components/contact/ContactForm";
+import AnimatedHeroTitle from "@/app/components/ui/AnimatedHeroTitle";
+import Link from "@/app/components/ui/Link";
+import { getI18n } from "@/app/i18n/server";
 
-export const metadata = {
-  title: "Contact",
-  description:
-    "Contactez le New Museum pour préparer une visite, organiser un projet ou simplement nous écrire.",
-};
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t("common.contact"), description: t("contact.description") };
+}
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { dictionary, t } = await getI18n();
   return (
     <main>
       <section className="grid min-h-[calc(100svh-3.5rem)] border-b border-ink sm:min-h-[calc(100svh-4rem)] lg:grid-cols-[1.35fr_0.65fr]">
         <div className="relative flex min-h-[68svh] flex-col justify-between overflow-hidden p-3 sm:p-4 lg:min-h-0">
           <div className="flex items-start justify-between gap-8">
-            <p className="eyebrow">( Parlons-nous )</p>
+            <p className="eyebrow">{t("contact.talk")}</p>
             <p className="eyebrow text-right leading-[1.25]">
-              Réponse sous
+              {t("contact.response")}
               <br />
-              48 heures
+              {t("contact.hours48")}
             </p>
           </div>
 
@@ -34,7 +35,7 @@ export default function ContactPage() {
           />
 
           <p className="max-w-md text-lg leading-[1.15] sm:text-2xl">
-            Une question, une idée ou un projet ? Notre équipe vous écoute.
+            {t("contact.lead")}
           </p>
         </div>
 
@@ -47,7 +48,9 @@ export default function ContactPage() {
             @
           </span>
           <div className="relative z-10">
-            <p className="eyebrow mb-4 text-white/60">Écrivez directement</p>
+            <p className="eyebrow mb-4 text-white/60">
+              {t("contact.writeDirectly")}
+            </p>
             <a
               href="mailto:bonjour@newmuseum.fr"
               className="tight-type break-all text-[clamp(2.1rem,4.4vw,5rem)] font-bold underline decoration-2 underline-offset-8 transition-opacity hover:opacity-60"
@@ -62,34 +65,18 @@ export default function ContactPage() {
 
       <section className="grid gap-12 px-3 py-24 sm:px-4 sm:py-36 lg:grid-cols-[1fr_2fr]">
         <div>
-          <p className="eyebrow">( Votre message )</p>
+          <p className="eyebrow">{t("contact.yourMessage")}</p>
           <h2 className="tight-type mt-6 max-w-xl text-[clamp(3.2rem,7vw,7rem)] font-bold">
-            ÉCRIVEZ-
+            {t("contact.writeFirst")}
             <br />
-            NOUS.
+            {t("contact.writeSecond")}
           </h2>
         </div>
         <ContactForm />
       </section>
 
       <section className="grid border-t border-paper/30 bg-ink text-paper md:grid-cols-3">
-        {[
-          {
-            label: "Venir",
-            title: "10 rue du Musée",
-            detail: "75003 Paris · Métro Arts et Métiers",
-          },
-          {
-            label: "Appeler",
-            title: "+33 1 84 80 20 26",
-            detail: "Mar—Dim · 10:00—18:00",
-          },
-          {
-            label: "Presse",
-            title: "presse@newmuseum.fr",
-            detail: "Visuels, dossiers et accréditations",
-          },
-        ].map((item, index) => (
+        {dictionary.contact.cards.map((item, index) => (
           <article
             key={item.label}
             className="group flex min-h-[22rem] flex-col justify-between border-b border-paper/30 p-3 transition-colors hover:bg-blue sm:p-4 md:border-b-0 md:border-r md:last:border-r-0"
@@ -114,11 +101,11 @@ export default function ContactPage() {
 
       <section className="flex flex-col items-start justify-between gap-8 bg-paper px-3 py-20 sm:px-4 sm:py-28 md:flex-row md:items-end">
         <div>
-          <p className="eyebrow mb-5">( Vous venez au musée ? )</p>
+          <p className="eyebrow mb-5">{t("contact.visiting")}</p>
           <h2 className="tight-type text-[clamp(3rem,7vw,7rem)] font-bold">
-            PRÉPAREZ
+            {t("contact.prepareFirst")}
             <br />
-            VOTRE VISITE.
+            {t("contact.prepareSecond")}
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -126,13 +113,13 @@ export default function ContactPage() {
             href="/agenda"
             className="rounded-full border border-ink px-6 py-3 font-mono text-xs font-bold uppercase transition-colors hover:bg-ink hover:text-paper"
           >
-            Voir l’agenda →
+            {t("contact.viewAgenda")}
           </Link>
           <Link
             href="/billeterie"
             className="rounded-full bg-blue px-6 py-3 font-mono text-xs font-bold uppercase text-white transition-transform hover:scale-105"
           >
-            Billetterie ↗
+            {t("common.ticketing")} ↗
           </Link>
         </div>
       </section>

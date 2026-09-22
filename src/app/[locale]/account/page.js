@@ -11,19 +11,22 @@ import {
 import AccountSignOut from "@/app/components/auth/AccountSignOut";
 import AnimatedHeroTitle from "@/app/components/ui/AnimatedHeroTitle";
 import Link from "@/app/components/ui/Link";
+import { localizeHref } from "@/app/i18n/routing";
+import { getI18n } from "@/app/i18n/server";
 import { db } from "@/db";
 import { favorite, ticketBooking } from "@/db/schema";
 
-export const metadata = {
-  title: "Mon compte",
-  description: "Votre espace personnel New Museum.",
-};
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return { title: t("account.title"), description: t("account.description") };
+}
 
 export default async function AccountPage() {
+  const { dictionary, locale, t } = await getI18n();
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/login");
+  if (!session) redirect(localizeHref("/login", locale));
 
-  const displayName = session.user.name || "Membre";
+  const displayName = session.user.name || t("account.member");
   const initials = displayName
     .split(/\s+/)
     .slice(0, 2)
@@ -31,11 +34,11 @@ export default async function AccountPage() {
     .join("")
     .toUpperCase();
   const membershipDate = session.user.createdAt
-    ? new Intl.DateTimeFormat("fr-FR", {
+    ? new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-GB", {
         month: "long",
         year: "numeric",
       }).format(new Date(session.user.createdAt))
-    : "Aujourd’hui";
+    : t("account.today");
   const [bookings, favoriteRows, objects] = await Promise.all([
     db
       .select()
@@ -63,9 +66,9 @@ export default async function AccountPage() {
     <main className="bg-paper">
       <section className="relative flex min-h-[calc(82svh-3.5rem)] flex-col justify-between overflow-hidden bg-ink p-3 text-paper sm:min-h-[calc(82svh-4rem)] sm:p-4">
         <div className="relative z-10 flex items-start justify-between gap-8">
-          <p className="eyebrow">( Espace membre )</p>
+          <p className="eyebrow">{t("account.space")}</p>
           <p className="eyebrow text-right leading-[1.25] text-paper/45">
-            Session active
+            {t("account.activeSession")}
             <br />
             New Museum · Paris
           </p>
@@ -79,10 +82,16 @@ export default async function AccountPage() {
         </span>
 
         <AnimatedHeroTitle
-          ariaLabel="Mon compte"
+          ariaLabel={t("account.title")}
           lines={[
-            { id: "account-one", text: "MON" },
-            { id: "account-two", text: "COMPTE", star: true },
+            ...t("account.title")
+              .toUpperCase()
+              .split(" ")
+              .map((text, index, words) => ({
+                id: `account-${index}`,
+                text,
+                star: index === words.length - 1,
+              })),
           ]}
           className="display-type relative z-10 self-center text-center text-[clamp(6rem,19vw,19rem)] [perspective:1000px]"
           lineClassName="overflow-hidden"
@@ -91,14 +100,13 @@ export default async function AccountPage() {
 
         <div className="relative z-10 grid gap-5 border-t border-paper/30 pt-3 sm:grid-cols-2 sm:items-end">
           <div>
-            <p className="eyebrow mb-2 text-paper/40">Bienvenue</p>
+            <p className="eyebrow mb-2 text-paper/40">{t("account.welcome")}</p>
             <p className="tight-type text-[clamp(2rem,4vw,4.5rem)] font-bold">
               {displayName}
             </p>
           </div>
           <p className="max-w-md text-base leading-[1.2] text-paper/55 sm:justify-self-end sm:text-right sm:text-lg">
-            Votre point de départ pour explorer la collection et préparer vos
-            prochaines visites.
+            {t("account.intro")}
           </p>
         </div>
       </section>
@@ -106,7 +114,7 @@ export default async function AccountPage() {
       <section className="grid border-b border-ink lg:grid-cols-[0.78fr_1.22fr]">
         <div className="flex min-h-[28rem] flex-col justify-between bg-blue p-3 text-white sm:p-4 lg:min-h-[38rem]">
           <div className="flex items-start justify-between">
-            <p className="eyebrow">Carte membre</p>
+            <p className="eyebrow">{t("account.memberCard")}</p>
             <p className="font-mono text-[0.625rem] font-bold tracking-[0.08em]">
               NM / 2026
             </p>
@@ -127,37 +135,40 @@ export default async function AccountPage() {
           </div>
 
           <div className="flex items-end justify-between border-t border-white/35 pt-3">
-            <p className="eyebrow text-white/65">Membre actif</p>
+            <p className="eyebrow text-white/65">{t("account.activeMember")}</p>
             <p className="display-type text-5xl">NM*</p>
           </div>
         </div>
 
         <div className="flex flex-col justify-between p-3 sm:p-4 lg:px-[clamp(2rem,6vw,7rem)] lg:py-10">
           <div>
-            <p className="eyebrow mb-8">( Vos informations )</p>
+            <p className="eyebrow mb-8">{t("account.information")}</p>
             <dl className="border-t border-ink">
               <div className="grid gap-2 border-b border-ink py-6 sm:grid-cols-[10rem_1fr] sm:items-center">
-                <dt className="eyebrow text-ink/40">Nom</dt>
+                <dt className="eyebrow text-ink/40">{t("account.name")}</dt>
                 <dd className="tight-type text-2xl font-bold sm:text-3xl">
                   {displayName}
                 </dd>
               </div>
               <div className="grid gap-2 border-b border-ink py-6 sm:grid-cols-[10rem_1fr] sm:items-center">
-                <dt className="eyebrow text-ink/40">E-mail</dt>
+                <dt className="eyebrow text-ink/40">{t("account.email")}</dt>
                 <dd className="break-all text-lg sm:text-xl">
                   {session.user.email}
                 </dd>
               </div>
               <div className="grid gap-2 border-b border-ink py-6 sm:grid-cols-[10rem_1fr] sm:items-center">
-                <dt className="eyebrow text-ink/40">Membre depuis</dt>
+                <dt className="eyebrow text-ink/40">
+                  {t("account.memberSince")}
+                </dt>
                 <dd className="text-lg capitalize sm:text-xl">
                   {membershipDate}
                 </dd>
               </div>
               <div className="grid gap-2 border-b border-ink py-6 sm:grid-cols-[10rem_1fr] sm:items-center">
-                <dt className="eyebrow text-ink/40">Statut</dt>
+                <dt className="eyebrow text-ink/40">{t("account.status")}</dt>
                 <dd className="flex items-center gap-3 text-lg sm:text-xl">
-                  <span className="size-2 rounded-full bg-blue" /> Actif
+                  <span className="size-2 rounded-full bg-blue" />{" "}
+                  {t("account.active")}
                 </dd>
               </div>
             </dl>
@@ -165,7 +176,7 @@ export default async function AccountPage() {
 
           <div className="mt-12 flex flex-col gap-4 border-t border-ink pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="max-w-sm text-sm leading-[1.25] text-ink/50">
-              Vos données de connexion restent privées et sécurisées.
+              {t("account.privacy")}
             </p>
             <AccountSignOut />
           </div>
@@ -178,9 +189,10 @@ export default async function AccountPage() {
       >
         <div className="grid gap-8 lg:grid-cols-[0.35fr_1fr]">
           <div>
-            <p className="eyebrow text-ink/45">( Votre visite )</p>
+            <p className="eyebrow text-ink/45">{t("account.yourVisit")}</p>
             <h2 className="tight-type mt-4 text-[clamp(3rem,7vw,7rem)] font-bold">
-              Mes billets<span className="text-blue">.</span>
+              {t("account.ticketsTitle")}
+              <span className="text-blue">.</span>
             </h2>
           </div>
 
@@ -196,22 +208,30 @@ export default async function AccountPage() {
                   </p>
                   <div>
                     <p className="tight-type text-2xl font-bold capitalize sm:text-4xl">
-                      {formatVisitDate(booking.visitDate)}
+                      {formatVisitDate(booking.visitDate, locale)}
                     </p>
                     <p className="mt-2 font-mono text-[0.625rem] uppercase tracking-[0.05em] text-ink/50">
-                      {booking.ticketCount} billet
-                      {booking.ticketCount > 1 ? "s" : ""} · NM—
+                      {booking.ticketCount}{" "}
+                      {booking.ticketCount > 1
+                        ? t("ticketing.tickets")
+                        : t("ticketing.ticket")}{" "}
+                      · NM—
                       {booking.id.slice(0, 8).toUpperCase()}
                     </p>
                   </div>
                   <div className="sm:text-right">
                     <p className="text-3xl font-bold tracking-[-0.05em]">
-                      {(booking.totalCents / 100).toLocaleString("fr-FR", {
-                        style: "currency",
-                        currency: "EUR",
-                      })}
+                      {(booking.totalCents / 100).toLocaleString(
+                        locale === "fr" ? "fr-FR" : "en-GB",
+                        {
+                          style: "currency",
+                          currency: "EUR",
+                        },
+                      )}
                     </p>
-                    <p className="eyebrow mt-2 text-blue">Confirmé</p>
+                    <p className="eyebrow mt-2 text-blue">
+                      {t("account.confirmed")}
+                    </p>
                   </div>
                 </article>
               ))}
@@ -219,14 +239,13 @@ export default async function AccountPage() {
           ) : (
             <div className="flex min-h-64 flex-col justify-between border border-ink p-5">
               <p className="max-w-md text-xl text-ink/55">
-                Aucun billet pour le moment. Votre prochaine visite peut
-                commencer ici.
+                {t("account.noTickets")}
               </p>
               <Link
                 href="/billeterie"
                 className="eyebrow self-start rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue"
               >
-                Prendre un billet →
+                {t("account.book")}
               </Link>
             </div>
           )}
@@ -239,14 +258,17 @@ export default async function AccountPage() {
       >
         <div className="mb-10 flex items-end justify-between gap-6 border-b border-ink pb-4">
           <div>
-            <p className="eyebrow text-ink/45">( Collection personnelle )</p>
+            <p className="eyebrow text-ink/45">
+              {t("account.personalCollection")}
+            </p>
             <h2 className="tight-type mt-4 text-[clamp(3rem,7vw,7rem)] font-bold">
-              Mes favoris<span className="text-blue">.</span>
+              {t("account.favorites")}
+              <span className="text-blue">.</span>
             </h2>
           </div>
           <p className="eyebrow">
-            {String(favoriteWorks.length).padStart(2, "0")} œuvre
-            {favoriteWorks.length > 1 ? "s" : ""}
+            {String(favoriteWorks.length).padStart(2, "0")}{" "}
+            {favoriteWorks.length > 1 ? t("account.works") : t("account.work")}
           </p>
         </div>
 
@@ -285,54 +307,34 @@ export default async function AccountPage() {
         ) : (
           <div className="flex min-h-64 flex-col justify-between border border-ink p-5">
             <p className="max-w-md text-xl text-ink/55">
-              Survolez les œuvres de la collection et composez ici votre propre
-              sélection.
+              {t("account.noFavorites")}
             </p>
             <Link
               href="/paintings"
               className="eyebrow self-start rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue"
             >
-              Explorer la collection →
+              {t("account.explore")}
             </Link>
           </div>
         )}
       </section>
 
       <section className="grid md:grid-cols-3">
-        {[
-          {
-            number: "01",
-            label: "Collection",
-            title: "VOIR LES ŒUVRES",
-            href: "/paintings",
-          },
-          {
-            number: "02",
-            label: "Programmation",
-            title: "EXPLORER L’AGENDA",
-            href: "/agenda",
-          },
-          {
-            number: "03",
-            label: "Votre visite",
-            title: "PRENDRE UN BILLET",
-            href: "/billeterie",
-          },
-        ].map((item) => (
+        {dictionary.account.shortcutItems.map(([label, title, href], index) => (
           <Link
-            key={item.number}
-            href={item.href}
+            key={href}
+            href={href}
             className="group flex min-h-[20rem] flex-col justify-between border-b border-ink p-3 transition-colors hover:bg-ink hover:text-paper sm:p-4 md:border-b-0 md:border-r md:last:border-r-0"
           >
             <div className="flex items-start justify-between">
-              <p className="eyebrow opacity-50">{item.label}</p>
+              <p className="eyebrow opacity-50">{label}</p>
               <p className="font-mono text-[0.625rem] font-bold">
-                {item.number}
+                {String(index + 1).padStart(2, "0")}
               </p>
             </div>
             <div className="flex items-end justify-between gap-6">
               <h2 className="tight-type max-w-md text-[clamp(2.2rem,4vw,4.5rem)] font-bold">
-                {item.title}
+                {title}
               </h2>
               <span className="text-3xl transition-transform group-hover:translate-x-1">
                 ↗
@@ -345,8 +347,8 @@ export default async function AccountPage() {
   );
 }
 
-function formatVisitDate(value) {
-  return new Intl.DateTimeFormat("fr-FR", {
+function formatVisitDate(value, locale) {
+  return new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-GB", {
     weekday: "long",
     day: "numeric",
     month: "long",

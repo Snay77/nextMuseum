@@ -5,8 +5,11 @@ import gsap from "gsap";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
+import { stripLocaleFromPathname } from "../../i18n/routing";
 import ArtworkRailTransition from "../transitions/ArtworkRailTransition";
 import ArtworkTransitionOverlay from "../transitions/ArtworkTransitionOverlay";
+import { HERO_SCROLL_LOCK_ATTRIBUTE } from "./SmoothScroll";
 
 const BAND_COUNT = 10;
 const TRANSITION_BANDS = Array.from(
@@ -20,21 +23,25 @@ const getVisibleBands = (container) =>
   ).filter((band) => window.getComputedStyle(band).display !== "none");
 
 const setScrollLock = (isLocked) => {
-  const overflow = isLocked ? "hidden" : "";
+  const keepHeroLocked =
+    !isLocked &&
+    document.documentElement.hasAttribute(HERO_SCROLL_LOCK_ATTRIBUTE);
+  const overflow = isLocked || keepHeroLocked ? "hidden" : "";
 
   document.documentElement.style.overflow = overflow;
   document.body.style.overflow = overflow;
 };
 
-const getDestinationLabel = (url) => {
-  const pathname = url?.split(/[?#]/)[0] || "/";
+const getDestinationLabel = (url, t) => {
+  const pathname = stripLocaleFromPathname(url?.split(/[?#]/)[0] || "/");
 
-  if (pathname === "/") return "ACCUEIL";
-  if (pathname === "/paintings") return "COLLECTION";
-  if (pathname === "/agenda") return "AGENDA";
-  if (pathname === "/contact") return "CONTACT";
-  if (pathname === "/billeterie") return "BILLETTERIE";
-  if (pathname.startsWith("/paintings/")) return "ŒUVRE";
+  if (pathname === "/") return t("template.destination.home");
+  if (pathname === "/paintings") return t("template.destination.collection");
+  if (pathname === "/agenda") return t("template.destination.agenda");
+  if (pathname === "/contact") return t("template.destination.contact");
+  if (pathname === "/billeterie") return t("template.destination.ticketing");
+  if (pathname.startsWith("/paintings/"))
+    return t("template.destination.artwork");
 
   return "NEW MUSEUM";
 };
@@ -230,6 +237,7 @@ function preloadInitialPage({ page, includeSpiral, onProgress }) {
 }
 
 export default function Template({ children }) {
+  const { t } = useI18n();
   const rootRef = useRef(null);
   const transitionRef = useRef(null);
   const bandsRef = useRef(null);
@@ -240,7 +248,8 @@ export default function Template({ children }) {
   const introProgressValueRef = useRef(null);
   const pageRef = useRef(null);
   const pathname = usePathname();
-  const isImmersiveRoute = pathname === "/singularity";
+  const routePathname = stripLocaleFromPathname(pathname);
+  const isImmersiveRoute = routePathname === "/singularity";
   const router = useRouter();
   const destinationUrl = useStore((state) => state.destinationUrl);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
@@ -309,6 +318,10 @@ export default function Template({ children }) {
       const progressFill = introProgressFillRef.current;
       const progressValue = introProgressValueRef.current;
       const progressState = { value: 0 };
+      let targetProgress = 0;
+      let progressFrame;
+      let progressStartedAt;
+      let previousProgressTimestamp;
       let cancelled = false;
       let finalTimeline;
 
@@ -321,13 +334,41 @@ export default function Template({ children }) {
       };
 
       const setProgress = (progress) => {
-        gsap.to(progressState, {
-          value: progress * 100,
-          duration: 0.38,
-          ease: "power2.out",
-          overwrite: true,
-          onUpdate: renderProgress,
-        });
+        targetProgress = Math.max(targetProgress, progress * 100);
+      };
+
+      const updateProgress = (timestamp) => {
+        if (cancelled) return;
+
+        progressStartedAt ??= timestamp;
+        const elapsed = timestamp - progressStartedAt;
+
+        if (elapsed > 380 && progressState.value < targetProgress) {
+          const previousTimestamp = previousProgressTimestamp ?? timestamp;
+          const elapsedSeconds = Math.min(
+            0.1,
+            (timestamp - previousTimestamp) / 1000,
+          );
+
+          progressState.value = Math.min(
+            targetProgress,
+            progressState.value + elapsedSeconds * 31.5,
+          );
+          renderProgress();
+        }
+
+        previousProgressTimestamp = timestamp;
+        progressFrame = window.requestAnimationFrame(updateProgress);
+      };
+
+      const startProgress = () => {
+        progressStartedAt = undefined;
+        previousProgressTimestamp = undefined;
+        progressFrame = window.requestAnimationFrame(updateProgress);
+      };
+
+      const stopProgress = () => {
+        window.cancelAnimationFrame(progressFrame);
       };
 
       setScrollLock(true);
@@ -360,13 +401,14 @@ export default function Template({ children }) {
       });
       const preloader = preloadInitialPage({
         page,
-        includeSpiral: pathname === "/",
+        includeSpiral: routePathname === "/",
         onProgress: setProgress,
       });
 
       timeline
-        .to(logo, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.15)
-        .to([skip, progressBar], { autoAlpha: 1, duration: 0.24 }, 0.45)
+        .to(logo, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.12)
+        .to([skip, progressBar], { autoAlpha: 1, duration: 0.28 }, 0.12)
+        .call(startProgress, [], 0.12)
         .to(
           logoStrokes,
           {
@@ -393,12 +435,13 @@ export default function Template({ children }) {
       Promise.all([drawingPromise, preloader.promise]).then(() => {
         if (cancelled) return;
 
+        stopProgress();
         finalTimeline = gsap.timeline();
         introTimelineRef.current = finalTimeline;
         finalTimeline
           .to(progressState, {
             value: 100,
-            duration: 0.3,
+            duration: 0.4,
             ease: "power2.out",
             onUpdate: renderProgress,
           })
@@ -447,6 +490,7 @@ export default function Template({ children }) {
 
       return () => {
         cancelled = true;
+        stopProgress();
         preloader.cancel();
         finalTimeline?.kill();
         introTimelineRef.current = null;
@@ -623,7 +667,7 @@ export default function Template({ children }) {
           ref={transitionLabelRef}
           className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#8e8e8e] opacity-0 sm:text-sm"
         >
-          ( {getDestinationLabel(destinationUrl)} )
+          ( {getDestinationLabel(destinationUrl, t)} )
           <span className="ml-1.5 text-blue">*</span>
         </p>
       </div>
@@ -682,7 +726,7 @@ export default function Template({ children }) {
           onClick={skipIntro}
           className="eyebrow absolute right-4 top-5 z-10 border-b border-paper/50 pb-1 text-paper opacity-0 transition-colors hover:text-blue sm:right-7 sm:top-7"
         >
-          Passer ↘
+          {t("template.skip")}
         </button>
 
         <div
@@ -690,7 +734,7 @@ export default function Template({ children }) {
           className="absolute inset-x-4 bottom-5 z-10 opacity-0 sm:inset-x-7 sm:bottom-7"
         >
           <div className="mb-3 flex items-end justify-between gap-6 font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-paper/55">
-            <span>Préparation de la visite</span>
+            <span>{t("template.preparing")}</span>
             <span
               ref={introProgressValueRef}
               className="text-2xl tracking-[-0.06em] text-paper sm:text-3xl"

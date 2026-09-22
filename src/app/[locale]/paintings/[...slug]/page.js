@@ -4,11 +4,13 @@ import {
   getObjects,
   getWikimediaThumbnail,
   isWikimediaThumbnail,
-} from "../../_lib/paintings";
-import FavoriteButton from "../../components/favorites/FavoriteButton";
-import ArtworkCollectionReturn from "../../components/transitions/ArtworkCollectionReturn";
-import ArtworkRailLink from "../../components/transitions/ArtworkRailLink";
-import AnimatedHeroTitle from "../../components/ui/AnimatedHeroTitle";
+} from "@/app/_lib/paintings";
+import ArtworkHeroCopy from "@/app/components/artwork/ArtworkHeroCopy";
+import FavoriteButton from "@/app/components/favorites/FavoriteButton";
+import ArtworkCollectionReturn from "@/app/components/transitions/ArtworkCollectionReturn";
+import ArtworkRailLink from "@/app/components/transitions/ArtworkRailLink";
+import AnimatedHeroTitle from "@/app/components/ui/AnimatedHeroTitle";
+import { getI18n } from "@/app/i18n/server";
 
 function getImageSource(src, width = 1920) {
   if (!src) return null;
@@ -16,6 +18,7 @@ function getImageSource(src, width = 1920) {
 }
 
 export default async function PaintingPage({ params }) {
+  const { t } = await getI18n();
   const { slug } = await params;
   const [painting, objects] = await Promise.all([
     getObject(slug.join("/")),
@@ -27,7 +30,7 @@ export default async function PaintingPage({ params }) {
       image !== painting.image && gallery.indexOf(image) === index,
   );
   const description = descriptionParagraphs(
-    painting.description ?? "Une œuvre majeure de la collection du New Museum.",
+    painting.description ?? t("artwork.fallbackDescription"),
   );
   const otherPaintings = objects
     .filter(
@@ -40,6 +43,7 @@ export default async function PaintingPage({ params }) {
       <section className="grid min-h-[calc(100svh-3.5rem)] border-b border-ink lg:grid-cols-[minmax(0,1.18fr)_minmax(25rem,0.82fr)]">
         <div className="relative grid min-h-[60svh] place-items-center overflow-hidden border-b border-ink bg-ink/[0.035] p-6 sm:min-h-[72svh] sm:p-10 lg:min-h-[calc(100svh-3.5rem)] lg:border-b-0 lg:border-r lg:p-[clamp(2.5rem,5vw,6rem)]">
           <ArtworkCollectionReturn
+            data-artwork-hero-ui
             slug={painting.slug}
             title={painting.title}
             listenToHistory
@@ -47,6 +51,7 @@ export default async function PaintingPage({ params }) {
           />
 
           <FavoriteButton
+            data-artwork-hero-ui
             slug={painting.slug}
             className="absolute right-3 top-3 z-20 sm:right-4 sm:top-4"
           />
@@ -65,20 +70,26 @@ export default async function PaintingPage({ params }) {
             />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between sm:inset-x-4 sm:bottom-4">
+          <div
+            data-artwork-hero-ui
+            className="pointer-events-none absolute inset-x-3 bottom-3 flex items-end justify-between sm:inset-x-4 sm:bottom-4"
+          >
             <p className="eyebrow text-ink/45">
               NM—{String(painting.id).padStart(3, "0")}
             </p>
-            <p className="eyebrow text-ink/45">Vue intégrale</p>
+            <p className="eyebrow text-ink/45">{t("artwork.fullView")}</p>
           </div>
         </div>
 
-        <div
-          data-artwork-hero-copy={painting.slug}
+        <ArtworkHeroCopy
+          slug={painting.slug}
           className="flex min-h-[42rem] flex-col justify-between px-3 py-5 sm:px-4 sm:py-7 lg:min-h-full"
         >
-          <div className="flex items-start justify-between gap-6 border-b border-ink/25 pb-3">
-            <p className="eyebrow">{painting.type ?? "Œuvre"}</p>
+          <div
+            data-artwork-copy-item
+            className="flex items-start justify-between gap-6 border-b border-ink/25 pb-3"
+          >
+            <p className="eyebrow">{painting.type ?? t("artwork.artwork")}</p>
             <p className="eyebrow text-blue">{painting.year}</p>
           </div>
 
@@ -88,11 +99,14 @@ export default async function PaintingPage({ params }) {
               className="tight-type max-w-[11ch] text-[clamp(3.4rem,6.2vw,7rem)] font-bold [perspective:1000px]"
               lineClassName="leading-[0.88]"
             />
-            <p className="mt-7 text-[clamp(1.3rem,2vw,2rem)] tracking-[-0.04em]">
+            <p
+              data-artwork-copy-item
+              className="mt-7 text-[clamp(1.3rem,2vw,2rem)] tracking-[-0.04em]"
+            >
               {painting.artist}
             </p>
 
-            <div className="mt-10 flex flex-wrap gap-2">
+            <div data-artwork-copy-item className="mt-10 flex flex-wrap gap-2">
               {painting.movement && (
                 <span className="eyebrow rounded-full border border-ink px-4 py-2.5">
                   {painting.movement}
@@ -106,21 +120,24 @@ export default async function PaintingPage({ params }) {
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-6 border-t border-ink pt-3">
-            <p className="eyebrow text-ink/50">Découvrir l’œuvre</p>
+          <div
+            data-artwork-copy-item
+            className="flex items-end justify-between gap-6 border-t border-ink pt-3"
+          >
+            <p className="eyebrow text-ink/50">{t("artwork.discover")}</p>
             <span className="grid size-11 shrink-0 place-items-center rounded-full bg-blue text-2xl text-white">
               ↓
             </span>
           </div>
-        </div>
+        </ArtworkHeroCopy>
       </section>
 
       <section className="px-3 py-20 sm:px-4 sm:py-28 lg:py-36">
         <div className="grid gap-12 border-t border-ink pt-4 lg:grid-cols-12 lg:gap-x-8">
           <div className="lg:col-span-3">
-            <p className="eyebrow">( À propos de l’œuvre )</p>
+            <p className="eyebrow">{t("artwork.about")}</p>
             <p className="mt-4 max-w-[15rem] text-sm leading-[1.4] text-ink/50">
-              Contexte, regard et matière d’une pièce majeure de la collection.
+              {t("artwork.context")}
             </p>
           </div>
 
@@ -141,12 +158,12 @@ export default async function PaintingPage({ params }) {
           </article>
 
           <dl className="h-fit border-t border-ink text-sm lg:sticky lg:top-20 lg:col-span-3">
-            <Info label="Artiste" value={painting.artist} />
-            <Info label="Année" value={painting.year} />
-            <Info label="Type" value={painting.type} />
-            <Info label="Mouvement" value={painting.movement} />
-            <Info label="Couleur" value={painting.color} />
-            <Info label="Lieu" value={painting.location} />
+            <Info label={t("artwork.artist")} value={painting.artist} />
+            <Info label={t("artwork.year")} value={painting.year} />
+            <Info label={t("artwork.type")} value={painting.type} />
+            <Info label={t("artwork.movement")} value={painting.movement} />
+            <Info label={t("artwork.color")} value={painting.color} />
+            <Info label={t("artwork.location")} value={painting.location} />
             {painting.locationLink && (
               <a
                 href={painting.locationLink}
@@ -154,7 +171,7 @@ export default async function PaintingPage({ params }) {
                 rel="noreferrer"
                 className="mt-5 inline-flex rounded-full bg-ink px-5 py-3 font-bold text-paper transition-colors hover:bg-blue"
               >
-                Visiter le musée ↗
+                {t("artwork.visitMuseum")}
               </a>
             )}
           </dl>
@@ -165,15 +182,17 @@ export default async function PaintingPage({ params }) {
         <section className="bg-ink px-3 py-5 text-paper sm:px-4 sm:py-7">
           <div className="grid items-end gap-8 border-b border-paper/35 pb-4 md:grid-cols-[1fr_auto]">
             <div>
-              <p className="eyebrow mb-4 text-paper/45">( Au plus près )</p>
+              <p className="eyebrow mb-4 text-paper/45">
+                {t("artwork.closer")}
+              </p>
               <h2 className="tight-type text-[clamp(3.5rem,9vw,9rem)] font-bold">
-                Détails
+                {t("artwork.details")}
                 <span className="text-blue">.</span>
               </h2>
             </div>
             <p className="eyebrow md:mb-2">
-              {String(detailImages.length).padStart(2, "0")} vue
-              {detailImages.length > 1 ? "s" : ""}
+              {String(detailImages.length).padStart(2, "0")}{" "}
+              {t(detailImages.length === 1 ? "artwork.view" : "artwork.views")}
             </p>
           </div>
 
@@ -183,7 +202,7 @@ export default async function PaintingPage({ params }) {
                 <div className="relative h-[min(68svh,46rem)] w-full border border-paper/10 bg-paper/[0.035] p-3 sm:p-5">
                   <Image
                     src={getImageSource(image, 1920)}
-                    alt={`${painting.title}, vue ${index + 1}`}
+                    alt={`${painting.title}, ${t("artwork.view").toLowerCase()} ${index + 1}`}
                     fill
                     sizes="(max-width: 768px) 100vw, 72vw"
                     className="object-contain p-3 sm:p-5"
@@ -191,7 +210,7 @@ export default async function PaintingPage({ params }) {
                 </div>
                 <figcaption className="mt-3 flex justify-between border-t border-paper/30 pt-2">
                   <span className="eyebrow text-paper/55">
-                    Vue {String(index + 1).padStart(2, "0")}
+                    {t("artwork.view")} {String(index + 1).padStart(2, "0")}
                   </span>
                   <span className="eyebrow">{painting.title}</span>
                 </figcaption>
@@ -204,9 +223,9 @@ export default async function PaintingPage({ params }) {
       <section className="px-3 py-24 sm:px-4 sm:py-36">
         <div className="flex items-end justify-between border-b border-ink pb-3">
           <div>
-            <p className="eyebrow mb-4">( À suivre )</p>
+            <p className="eyebrow mb-4">{t("artwork.next")}</p>
             <h2 className="tight-type text-[clamp(3rem,7vw,7rem)] font-bold">
-              Continuez à regarder.
+              {t("artwork.continue")}
             </h2>
           </div>
           <ArtworkCollectionReturn

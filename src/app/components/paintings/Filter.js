@@ -2,10 +2,12 @@
 
 import { useQueryState } from "nuqs";
 import { useMemo } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
 import ParallaxGallery from "./ParallaxGallery";
 import SearchBar from "./SearchBar";
 
 export default function Filter({ objects }) {
+  const { t } = useI18n();
   const [movement, setMovement] = useQueryState("movement");
 
   const movements = useMemo(
@@ -24,7 +26,7 @@ export default function Filter({ objects }) {
   return (
     <>
       <div className="relative z-40 grid gap-8 border-b border-ink py-8 lg:grid-cols-[1fr_3fr] lg:py-10">
-        <p className="eyebrow pt-1">Rechercher / filtrer</p>
+        <p className="eyebrow pt-1">{t("collection.filter")}</p>
         <div>
           <SearchBar paintings={objects} />
           <div className="mt-6 flex gap-x-5 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:gap-y-3 md:overflow-visible md:pb-0">
@@ -34,7 +36,7 @@ export default function Filter({ objects }) {
               aria-pressed={!movement}
               className={`eyebrow shrink-0 cursor-pointer border-b pb-1 transition-opacity hover:opacity-50 ${!movement ? "border-ink" : "border-transparent text-ink/45"}`}
             >
-              Tout ({objects.length})
+              {t("collection.all")} ({objects.length})
             </button>
             {movements.map((value) => (
               <button
@@ -53,9 +55,12 @@ export default function Filter({ objects }) {
 
       <div className="sticky top-14 z-30 -mx-3 flex items-center justify-between border-b border-ink/30 bg-paper/90 px-3 py-3 backdrop-blur-md sm:top-16 sm:-mx-4 sm:px-4">
         <p className="eyebrow" aria-live="polite">
-          {filtered.length} résultat{filtered.length !== 1 ? "s" : ""}
+          {filtered.length}{" "}
+          {t(
+            filtered.length === 1 ? "collection.result" : "collection.results",
+          )}
         </p>
-        <p className="eyebrow text-ink/45">Défilez pour explorer ↓</p>
+        <p className="eyebrow text-ink/45">{t("collection.scroll")}</p>
       </div>
 
       {filtered.length > 0 ? (
@@ -66,7 +71,7 @@ export default function Filter({ objects }) {
       ) : (
         <div className="grid min-h-[45vh] place-items-center border-b border-ink">
           <p className="tight-type max-w-xl text-center text-4xl font-bold sm:text-6xl">
-            Rien ici — essayez un autre mouvement.
+            {t("collection.empty")}
           </p>
         </div>
       )}

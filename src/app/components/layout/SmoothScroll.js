@@ -14,6 +14,7 @@ export const LOCOMOTIVE_SCROLL_TO_EVENT = "new-museum:scroll-to";
 export const LOCOMOTIVE_SCROLL_TOP_EVENT = "new-museum:scroll-top";
 export const LOCOMOTIVE_STOP_EVENT = "new-museum:scroll-stop";
 export const LOCOMOTIVE_START_EVENT = "new-museum:scroll-start";
+export const HERO_SCROLL_LOCK_ATTRIBUTE = "data-hero-scroll-locked";
 
 export default function SmoothScroll({ children }) {
   const locomotiveRef = useRef(null);
@@ -33,6 +34,12 @@ export default function SmoothScroll({ children }) {
         initCustomTicker: (render) => gsap.ticker.add(render),
         destroyCustomTicker: (render) => gsap.ticker.remove(render),
       });
+
+      if (document.documentElement.hasAttribute(HERO_SCROLL_LOCK_ATTRIBUTE)) {
+        locomotive.scrollTo(0, { immediate: true, force: true });
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        locomotive.stop();
+      }
 
       locomotiveRef.current = locomotive;
       return locomotive;
@@ -54,13 +61,36 @@ export default function SmoothScroll({ children }) {
       });
     };
 
-    const scrollToTop = () => {
+    const scrollToTop = (event) => {
+      const shouldAnimate = event.detail?.animated === true;
+      const duration = Math.max(0.1, Number(event.detail?.duration) || 1);
+      const onComplete = event.detail?.onComplete;
+      const completeScroll = () => {
+        ScrollTrigger.update();
+        onComplete?.();
+      };
+
+      if (shouldAnimate && locomotiveRef.current) {
+        locomotiveRef.current.scrollTo(0, {
+          duration,
+          easing: (progress) =>
+            progress < 0.5
+              ? 4 * progress ** 3
+              : 1 - (-2 * progress + 2) ** 3 / 2,
+          immediate: false,
+          lock: true,
+          force: true,
+          onComplete: completeScroll,
+        });
+        return;
+      }
+
       locomotiveRef.current?.scrollTo(0, {
         immediate: true,
         force: true,
       });
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      ScrollTrigger.update();
+      completeScroll();
     };
 
     const scrollToPosition = (event) => {

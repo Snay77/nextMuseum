@@ -1,7 +1,11 @@
+import { getI18n } from "../../i18n/server";
 import AuthButton from "../auth/AuthButton";
 import Link from "../ui/Link";
+import LanguageSwitcher from "./LanguageSwitcher";
 
-export default function Header() {
+export default async function Header() {
+  const { t } = await getI18n();
+
   return (
     <header
       data-site-header
@@ -13,43 +17,43 @@ export default function Header() {
             className="eyebrow transition-opacity hover:opacity-50"
             href="/"
           >
-            Accueil
+            {t("common.home")}
           </Link>
           <Link
             className="eyebrow transition-opacity hover:opacity-50"
             href="/paintings"
           >
-            Collection
+            {t("common.collection")}
           </Link>
           <Link
             className="eyebrow hidden transition-opacity hover:opacity-50 sm:block"
             href="/agenda"
           >
-            Agenda
+            {t("common.agenda")}
           </Link>
         </div>
 
         <Link
           href="/"
-          aria-label="New Museum, accueil"
+          aria-label={t("header.homeAria")}
           className="text-[1.45rem] font-black tracking-[-0.12em]"
         >
           NM<span className="text-blue">*</span>
         </Link>
 
         <div className="flex items-center justify-end gap-4 sm:gap-7">
-          <span className="eyebrow hidden lg:block">Paris · FR</span>
+          <LanguageSwitcher />
           <Link
             className="eyebrow hidden transition-opacity hover:opacity-50 xl:block"
             href="/contact"
           >
-            Contact
+            {t("common.contact")}
           </Link>
           <Link
             className="eyebrow rounded-full bg-ink px-3 py-2 text-paper transition-colors hover:bg-blue sm:px-4"
             href="/billeterie"
           >
-            Billets ↗
+            {t("common.tickets")} ↗
           </Link>
           <AuthButton />
         </div>

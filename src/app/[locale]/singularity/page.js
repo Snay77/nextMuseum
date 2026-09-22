@@ -2,16 +2,19 @@ import {
   getObjects,
   getWikimediaThumbnail,
   isWikimediaThumbnail,
-} from "../_lib/paintings";
-import SingularityExperience from "../components/singularity/SingularityExperience";
+} from "@/app/_lib/paintings";
+import SingularityExperience from "@/app/components/singularity/SingularityExperience";
+import { getI18n } from "@/app/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Singularity 031",
-  description:
-    "Une expérience audiovisuelle où la collection du New Museum entre en fusion.",
-};
+export async function generateMetadata() {
+  const { t } = await getI18n();
+  return {
+    title: "Singularity 031",
+    description: t("singularity.description"),
+  };
+}
 
 function imageSource(src) {
   if (!src) return null;

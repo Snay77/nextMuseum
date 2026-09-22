@@ -4,6 +4,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
+import { ARTWORK_TITLE_REVEAL_EVENT } from "../artwork/ArtworkHeroCopy";
 
 function normalizeLines(text, lines) {
   if (lines?.length) {
@@ -43,6 +44,8 @@ export default function AnimatedHeroTitle({
   const titleRef = useRef(null);
   const isFirstRender = useStore((state) => state.isFirstRender);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
+  const transitionType = useStore((state) => state.transitionType);
+  const artworkNavigation = useStore((state) => state.artworkNavigation);
   const normalizedLines = normalizeLines(text, lines);
   const accessibleLabel =
     ariaLabel ??
@@ -62,6 +65,14 @@ export default function AnimatedHeroTitle({
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
+      const artworkSlug = titleRef.current.closest("[data-artwork-hero-copy]")
+        ?.dataset.artworkHeroCopy;
+      const isRailSource =
+        isTransitionActive &&
+        transitionType === "artwork-rail" &&
+        artworkNavigation?.fromSlug === artworkSlug;
+
+      if (isRailSource) return;
 
       if (!active || isFirstRender || isTransitionActive) {
         gsap.set(letters, {
@@ -86,6 +97,9 @@ export default function AnimatedHeroTitle({
           autoAlpha: 1,
           clearProps: "transform",
         });
+        titleRef.current.dispatchEvent(
+          new CustomEvent(ARTWORK_TITLE_REVEAL_EVENT, { bubbles: true }),
+        );
         return;
       }
 
@@ -105,6 +119,12 @@ export default function AnimatedHeroTitle({
       }
 
       const timeline = gsap.timeline({ delay });
+
+      timeline.call(() => {
+        titleRef.current?.dispatchEvent(
+          new CustomEvent(ARTWORK_TITLE_REVEAL_EVENT, { bubbles: true }),
+        );
+      });
 
       timeline.to(letters, {
         autoAlpha: 1,
@@ -133,7 +153,14 @@ export default function AnimatedHeroTitle({
     },
     {
       scope: titleRef,
-      dependencies: [active, delay, isFirstRender, isTransitionActive],
+      dependencies: [
+        active,
+        artworkNavigation?.fromSlug,
+        delay,
+        isFirstRender,
+        isTransitionActive,
+        transitionType,
+      ],
     },
   );
 

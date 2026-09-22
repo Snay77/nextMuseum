@@ -1,6 +1,9 @@
+import { getI18n } from "../../i18n/server";
 import Link from "../ui/Link";
 
-export default function Footer() {
+export default async function Footer() {
+  const { t } = await getI18n();
+
   return (
     <footer
       data-site-footer
@@ -8,28 +11,28 @@ export default function Footer() {
     >
       <div className="grid gap-12 border-t border-paper/30 pt-4 md:grid-cols-2">
         <h2 className="tight-type max-w-3xl text-[clamp(3.2rem,8vw,8.5rem)] font-bold">
-          L’art commence ici.
+          {t("footer.title")}
         </h2>
         <div className="grid grid-cols-2 gap-8 text-sm md:pt-2">
           <div className="space-y-2">
-            <p className="eyebrow mb-5 text-paper/50">Visiter</p>
+            <p className="eyebrow mb-5 text-paper/50">{t("common.visit")}</p>
             <p>10 rue du Musée</p>
             <p>75003 Paris</p>
-            <p>Mar—Dim · 10h—19h</p>
+            <p>{t("footer.hours")}</p>
           </div>
           <div className="space-y-2">
-            <p className="eyebrow mb-5 text-paper/50">Explorer</p>
+            <p className="eyebrow mb-5 text-paper/50">{t("common.explore")}</p>
             <Link className="block hover:underline" href="/paintings">
-              La collection
+              {t("footer.collection")}
             </Link>
             <Link className="block hover:underline" href="/agenda">
-              Agenda
+              {t("common.agenda")}
             </Link>
             <Link className="block hover:underline" href="/billeterie">
-              Billetterie
+              {t("common.ticketing")}
             </Link>
             <Link className="block hover:underline" href="/contact">
-              Contact
+              {t("common.contact")}
             </Link>
           </div>
         </div>

@@ -3,9 +3,14 @@
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
+import { localizeHref, stripLocaleFromPathname } from "../../i18n/routing";
 
 export default function Link({ href, children, onClick, ...props }) {
   const pathname = usePathname();
+  const { locale } = useI18n();
+  const localizedHref = localizeHref(href, locale);
+  const routePathname = stripLocaleFromPathname(pathname);
   const isTransitionActive = useStore((state) => state.isTransitionActive);
   const setDestinationUrl = useStore((state) => state.setDestinationUrl);
   const setTransitionType = useStore((state) => state.setTransitionType);
@@ -15,19 +20,20 @@ export default function Link({ href, children, onClick, ...props }) {
 
   return (
     <NextLink
-      href={href}
+      href={localizedHref}
       {...props}
       onClick={(event) => {
         onClick?.(event);
-        if (event.defaultPrevented || typeof href !== "string") return;
+        if (event.defaultPrevented || typeof localizedHref !== "string") return;
 
         const isModifiedClick =
           event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-        const target = new URL(href, window.location.href);
+        const target = new URL(localizedHref, window.location.href);
         const isSameDocumentAnchor =
           target.pathname === pathname && Boolean(target.hash);
         const isImmersiveNavigation =
-          target.pathname === "/singularity" || pathname === "/singularity";
+          stripLocaleFromPathname(target.pathname) === "/singularity" ||
+          routePathname === "/singularity";
 
         if (
           isModifiedClick ||
@@ -44,7 +50,7 @@ export default function Link({ href, children, onClick, ...props }) {
         if (isTransitionActive || target.pathname === pathname) return;
 
         setTransitionType("default");
-        setDestinationUrl(href);
+        setDestinationUrl(localizedHref);
         setIsTransitionActive(true);
       }}
     >

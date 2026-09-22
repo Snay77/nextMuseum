@@ -3,46 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn, signUp } from "@/app/_lib/auth-client";
+import { useI18n } from "@/app/i18n/I18nProvider";
+import { localizeHref } from "@/app/i18n/routing";
 import AnimatedHeroTitle from "../ui/AnimatedHeroTitle";
 import Link from "../ui/Link";
 
-const AUTH_CONTENT = {
-  login: {
-    eyebrow: "( Espace personnel )",
-    marker: "01 / 02",
-    title: [
-      { id: "access", text: "VOTRE" },
-      { id: "member", text: "ESPACE", star: true },
-    ],
-    heading: "Bon retour.",
-    description:
-      "Connectez-vous pour retrouver votre espace New Museum et poursuivre votre visite.",
-    submitLabel: "Entrer dans mon espace",
-    alternateText: "Première visite numérique ?",
-    alternateLabel: "Créer un compte",
-    alternateHref: "/register",
-  },
-  register: {
-    eyebrow: "( Devenir membre )",
-    marker: "02 / 02",
-    title: [
-      { id: "join", text: "REJOI" },
-      { id: "join-end", text: "GNEZ", star: true },
-    ],
-    heading: "Bienvenue.",
-    description:
-      "Créez votre accès personnel et entrez dans l’univers du New Museum.",
-    submitLabel: "Créer mon espace",
-    alternateText: "Vous avez déjà un compte ?",
-    alternateLabel: "Se connecter",
-    alternateHref: "/login",
-  },
-};
-
 export default function AuthExperience({ mode, callbackUrl = "/account" }) {
   const router = useRouter();
-  const content = AUTH_CONTENT[mode];
+  const { dictionary, locale, t } = useI18n();
+  const content = dictionary.auth[mode];
   const isRegister = mode === "register";
+  const title = content.title.map((text, index) => ({
+    id: `${mode}-${index}`,
+    text,
+    star: index === content.title.length - 1,
+  }));
+  const marker = isRegister ? "02 / 02" : "01 / 02";
+  const alternateHref = isRegister ? "/login" : "/register";
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
@@ -59,14 +36,11 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
 
     const callbacks = {
       onSuccess: () => {
-        router.push(callbackUrl);
+        router.push(localizeHref(callbackUrl, locale));
         router.refresh();
       },
       onError: ({ error: authError }) => {
-        setError(
-          authError.message ||
-            "Une erreur est survenue. Vérifiez vos informations.",
-        );
+        setError(authError.message || t("auth.genericError"));
       },
     };
 
@@ -94,7 +68,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
           <div className="relative z-10 flex items-start justify-between gap-8">
             <p className="eyebrow">{content.eyebrow}</p>
             <p className="font-mono text-[0.625rem] font-bold tracking-[0.08em] text-paper/45">
-              {content.marker}
+              {marker}
             </p>
           </div>
 
@@ -114,8 +88,8 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
           </div>
 
           <AnimatedHeroTitle
-            ariaLabel={`${content.title.map((line) => line.text).join(" ")}*`}
-            lines={content.title}
+            ariaLabel={`${content.title.join(" ")}*`}
+            lines={title}
             className="display-type relative z-10 text-[clamp(5.2rem,13.4vw,14rem)] [perspective:1000px]"
             lineClassName="overflow-hidden"
             starClassName="ml-[0.04em] align-top text-[0.3em] text-blue"
@@ -123,9 +97,9 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
 
           <div className="relative z-10 flex items-end justify-between gap-8 border-t border-paper/30 pt-3">
             <p className="max-w-xs text-sm leading-[1.2] text-paper/55">
-              Collection moderne & contemporaine
+              {t("auth.collection")}
               <br />
-              Paris · France
+              {t("common.paris")}
             </p>
             <span className="eyebrow text-blue">NM*</span>
           </div>
@@ -133,8 +107,8 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
 
         <div className="flex min-h-[42rem] flex-col p-3 sm:p-4 lg:min-h-0 lg:px-[clamp(2rem,5vw,6rem)] lg:py-8">
           <div className="flex items-start justify-between border-b border-ink pb-3">
-            <p className="eyebrow">Accès membre</p>
-            <p className="eyebrow text-ink/40">Connexion sécurisée</p>
+            <p className="eyebrow">{t("auth.memberAccess")}</p>
+            <p className="eyebrow text-ink/40">{t("auth.secure")}</p>
           </div>
 
           <div className="my-auto py-16 lg:py-10">
@@ -151,13 +125,13 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
               {isRegister ? (
                 <label className="block border-b border-ink py-5">
                   <span className="eyebrow mb-3 block text-ink/40">
-                    01 · Votre nom
+                    01 · {t("auth.yourName")}
                   </span>
                   <input
                     required
                     name="name"
                     autoComplete="name"
-                    placeholder="Nom et prénom"
+                    placeholder={t("auth.namePlaceholder")}
                     disabled={isPending}
                     className="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-[-0.04em] outline-none placeholder:text-ink/20 disabled:opacity-50 sm:text-3xl"
                   />
@@ -166,7 +140,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
 
               <label className="block border-b border-ink py-5">
                 <span className="eyebrow mb-3 block text-ink/40">
-                  {isRegister ? "02" : "01"} · Adresse e-mail
+                  {isRegister ? "02" : "01"} · {t("auth.emailAddress")}
                 </span>
                 <input
                   required
@@ -182,7 +156,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
 
               <label className="block border-b border-ink py-5">
                 <span className="eyebrow mb-3 block text-ink/40">
-                  {isRegister ? "03" : "02"} · Mot de passe
+                  {isRegister ? "03" : "02"} · {t("auth.password")}
                 </span>
                 <input
                   required
@@ -192,7 +166,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
                   autoComplete={
                     isRegister ? "new-password" : "current-password"
                   }
-                  placeholder="8 caractères minimum"
+                  placeholder={t("auth.passwordPlaceholder")}
                   disabled={isPending}
                   className="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-[-0.04em] outline-none placeholder:text-ink/20 disabled:opacity-50 sm:text-3xl"
                 />
@@ -215,7 +189,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
                 aria-busy={isPending}
                 className="group mt-4 flex w-full items-center justify-between rounded-full bg-ink px-6 py-4 font-mono text-xs font-bold uppercase text-paper transition-colors hover:bg-blue disabled:cursor-wait disabled:opacity-60"
               >
-                <span>{isPending ? "Un instant…" : content.submitLabel}</span>
+                <span>{isPending ? t("auth.wait") : content.submit}</span>
                 <span className="text-lg transition-transform group-hover:translate-x-1">
                   →
                 </span>
@@ -226,7 +200,7 @@ export default function AuthExperience({ mode, callbackUrl = "/account" }) {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink pt-3">
             <p className="text-sm text-ink/55">{content.alternateText}</p>
             <Link
-              href={`${content.alternateHref}?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+              href={`${alternateHref}?callbackUrl=${encodeURIComponent(callbackUrl)}`}
               className="eyebrow border-b border-ink pb-1 transition-colors hover:border-blue hover:text-blue"
             >
               {content.alternateLabel} ↗

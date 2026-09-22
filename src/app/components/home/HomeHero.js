@@ -4,10 +4,18 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { useRef } from "react";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
+import {
+  HERO_SCROLL_LOCK_ATTRIBUTE,
+  LOCOMOTIVE_SCROLL_TOP_EVENT,
+  LOCOMOTIVE_START_EVENT,
+  LOCOMOTIVE_STOP_EVENT,
+} from "../layout/SmoothScroll";
 import AnimatedHeroTitle from "../ui/AnimatedHeroTitle";
 import Link from "../ui/Link";
 
 export default function HomeHero() {
+  const { t } = useI18n();
   const sectionRef = useRef(null);
   const isFirstRender = useStore((state) => state.isFirstRender);
   const setIsHeroAnimationComplete = useStore(
@@ -36,6 +44,71 @@ export default function HomeHero() {
         return;
       }
 
+      let isScrollReleased = false;
+      let scrollLockFrame;
+      let scrollLockTimer;
+      const blockedScrollKeys = new Set([
+        "ArrowDown",
+        "ArrowUp",
+        "End",
+        "Home",
+        "PageDown",
+        "PageUp",
+        " ",
+      ]);
+      const preventScroll = (event) => event.preventDefault();
+      const preventScrollKey = (event) => {
+        if (blockedScrollKeys.has(event.key)) event.preventDefault();
+      };
+      const keepHeroAtTop = () => {
+        if (window.scrollY !== 0) {
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        }
+      };
+      const releaseScroll = () => {
+        if (isScrollReleased) return;
+        isScrollReleased = true;
+        window.cancelAnimationFrame(scrollLockFrame);
+        window.clearTimeout(scrollLockTimer);
+        window.removeEventListener("wheel", preventScroll, true);
+        window.removeEventListener("touchmove", preventScroll, true);
+        window.removeEventListener("keydown", preventScrollKey, true);
+        window.removeEventListener("scroll", keepHeroAtTop, true);
+        document.documentElement.removeAttribute(HERO_SCROLL_LOCK_ATTRIBUTE);
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
+        window.dispatchEvent(new Event(LOCOMOTIVE_START_EVENT));
+      };
+
+      window.addEventListener("wheel", preventScroll, {
+        passive: false,
+        capture: true,
+      });
+      window.addEventListener("touchmove", preventScroll, {
+        passive: false,
+        capture: true,
+      });
+      window.addEventListener("keydown", preventScrollKey, true);
+      window.addEventListener("scroll", keepHeroAtTop, {
+        passive: true,
+        capture: true,
+      });
+      document.documentElement.setAttribute(HERO_SCROLL_LOCK_ATTRIBUTE, "");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
+      window.dispatchEvent(new Event(LOCOMOTIVE_STOP_EVENT));
+      scrollLockFrame = window.requestAnimationFrame(() => {
+        window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
+        window.dispatchEvent(new Event(LOCOMOTIVE_STOP_EVENT));
+      });
+      scrollLockTimer = window.setTimeout(() => {
+        document.documentElement.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
+        window.dispatchEvent(new Event(LOCOMOTIVE_SCROLL_TOP_EVENT));
+        window.dispatchEvent(new Event(LOCOMOTIVE_STOP_EVENT));
+      }, 0);
       setIsHeroAnimationComplete(false);
 
       gsap.set(backgroundStar, {
@@ -104,7 +177,12 @@ export default function HomeHero() {
         .set([backgroundStar, ...chrome, cta].filter(Boolean), {
           clearProps: "transform,clipPath,opacity,visibility",
         })
-        .call(() => setIsHeroAnimationComplete(true));
+        .call(() => {
+          setIsHeroAnimationComplete(true);
+          releaseScroll();
+        });
+
+      return releaseScroll;
     },
     {
       scope: sectionRef,
@@ -122,11 +200,12 @@ export default function HomeHero() {
         data-hero-chrome
       >
         <p className="tight-type max-w-[15rem] text-lg font-bold sm:max-w-sm sm:text-2xl">
-          Un musée vivant pour des regards nouveaux.
+          {t("home.hero.tagline")}
         </p>
         <p className="eyebrow text-right leading-[1.25]">
-          Art moderne
-          <br />& contemporain
+          {t("home.hero.modern")}
+          <br />
+          {t("home.hero.contemporary")}
         </p>
       </div>
 
@@ -155,13 +234,13 @@ export default function HomeHero() {
         className="absolute inset-x-3 bottom-3 z-20 flex items-end justify-between sm:inset-x-4"
         data-hero-chrome
       >
-        <p className="eyebrow">Paris · France</p>
+        <p className="eyebrow">{t("common.paris")}</p>
         <Link
           href="/paintings"
           className="eyebrow rounded-full bg-ink px-5 py-3 text-paper transition-colors hover:bg-blue"
           data-hero-cta
         >
-          Explorer →
+          {t("home.hero.explore")}
         </Link>
       </div>
     </section>

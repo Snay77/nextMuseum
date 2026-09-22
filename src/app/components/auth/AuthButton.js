@@ -1,10 +1,12 @@
 "use client";
 
 import { useSession } from "../../_lib/auth-client";
+import { useI18n } from "../../i18n/I18nProvider";
 import Link from "../ui/Link";
 
 export default function AuthButton() {
   const { data: session, isPending } = useSession();
+  const { t } = useI18n();
 
   if (isPending) {
     return (
@@ -19,10 +21,10 @@ export default function AuthButton() {
     return (
       <Link
         href="/login"
-        aria-label="Se connecter"
+        aria-label={t("header.loginAria")}
         className="eyebrow transition-colors hover:text-blue"
       >
-        Connexion
+        {t("common.login")}
       </Link>
     );
   }
@@ -34,11 +36,11 @@ export default function AuthButton() {
   return (
     <Link
       href="/account"
-      aria-label="Mon compte"
+      aria-label={t("header.accountAria")}
       className="group flex items-center gap-2"
     >
       <span className="eyebrow hidden transition-colors group-hover:text-blue xl:block">
-        Compte
+        {t("common.account")}
       </span>
       <span className="grid size-7 place-items-center rounded-full border border-ink font-mono text-[0.625rem] font-bold transition-colors group-hover:border-blue group-hover:bg-blue group-hover:text-white">
         {initial}

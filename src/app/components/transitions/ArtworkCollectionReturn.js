@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect } from "react";
 import { useStore } from "../../_lib/store";
+import { useI18n } from "../../i18n/I18nProvider";
+import { stripLocaleFromPathname } from "../../i18n/routing";
 import Link from "../ui/Link";
 
 const getContainedImageRect = (containerRect, naturalWidth, naturalHeight) => {
@@ -38,7 +40,9 @@ export default function ArtworkCollectionReturn({
   title,
   className = "",
   listenToHistory = false,
+  ...props
 }) {
+  const { t } = useI18n();
   const collectionState = useStore((state) => state.collectionState);
   const canMorphBack = collectionState?.slug === slug;
   const returnUrl = canMorphBack ? collectionState.url : "/paintings";
@@ -98,7 +102,8 @@ export default function ArtworkCollectionReturn({
     if (!canMorphBack || !listenToHistory) return;
 
     const handlePopState = () => {
-      if (window.location.pathname !== "/paintings") return;
+      if (stripLocaleFromPathname(window.location.pathname) !== "/paintings")
+        return;
       prepareReturn("history");
     };
 
@@ -118,13 +123,14 @@ export default function ArtworkCollectionReturn({
 
   return (
     <Link
+      {...props}
       href={returnUrl}
       onClick={handleClick}
       className={className}
-      aria-label="Revenir à toutes les œuvres"
+      aria-label={t("artwork.backAria")}
     >
       <span aria-hidden="true">←</span>
-      Toutes les œuvres
+      {t("artwork.allWorks")}
     </Link>
   );
 }

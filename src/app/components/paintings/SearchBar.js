@@ -7,8 +7,10 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
+import { useI18n } from "../../i18n/I18nProvider";
 
 export default function SearchBar({ paintings }) {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
   const results = useMemo(() => {
@@ -26,7 +28,7 @@ export default function SearchBar({ paintings }) {
   return (
     <div className="relative">
       <label className="sr-only" htmlFor="collection-search">
-        Rechercher une œuvre ou un artiste
+        {t("collection.searchLabel")}
       </label>
       <div className="flex items-center border-b-2 border-ink">
         <span className="text-2xl" aria-hidden="true">
@@ -37,7 +39,7 @@ export default function SearchBar({ paintings }) {
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Une œuvre, un artiste…"
+          placeholder={t("collection.searchPlaceholder")}
           className="w-full bg-transparent px-3 py-2 text-xl font-bold tracking-[-0.04em] outline-none placeholder:text-ink/30 sm:text-3xl"
         />
         {search && (
@@ -46,7 +48,7 @@ export default function SearchBar({ paintings }) {
             onClick={() => setSearch("")}
             className="eyebrow cursor-pointer py-3"
           >
-            Effacer
+            {t("collection.clear")}
           </button>
         )}
       </div>
@@ -86,7 +88,7 @@ export default function SearchBar({ paintings }) {
               </Link>
             ))
           ) : (
-            <p className="p-5 text-sm">Aucune œuvre trouvée.</p>
+            <p className="p-5 text-sm">{t("collection.noSearchResult")}</p>
           )}
         </div>
       )}

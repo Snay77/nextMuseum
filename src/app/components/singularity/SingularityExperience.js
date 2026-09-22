@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { useI18n } from "@/app/i18n/I18nProvider";
+import Link from "../ui/Link";
 
 const COLLAPSE_TIME = 31;
 const FORMATION_TIME = 37;
@@ -41,13 +42,13 @@ function formatTime(value) {
 }
 
 function phaseFromTime(time) {
-  if (time < 7) return "ÉMERGENCE";
-  if (time < 18) return "MISE EN ORBITE";
-  if (time < 26) return "ACCRÉTION";
-  if (time < COLLAPSE_TIME) return "HORIZON DES ÉVÉNEMENTS";
-  if (time < 33) return "COLLAPSE";
-  if (time < FORMATION_TIME) return "RECOMPOSITION";
-  return "COLLECTION FUSIONNÉE";
+  if (time < 7) return "emergence";
+  if (time < 18) return "orbit";
+  if (time < 26) return "accretion";
+  if (time < COLLAPSE_TIME) return "horizon";
+  if (time < 33) return "collapse";
+  if (time < FORMATION_TIME) return "recomposition";
+  return "complete";
 }
 
 function createPlaceholder(work, index) {
@@ -183,6 +184,7 @@ function createFireMaterial() {
 }
 
 export default function SingularityExperience({ works }) {
+  const { dictionary, t } = useI18n();
   const stageRef = useRef(null);
   const canvasRef = useRef(null);
   const audioRef = useRef(null);
@@ -194,7 +196,9 @@ export default function SingularityExperience({ works }) {
   const [sceneReady, setSceneReady] = useState(false);
   const [textureProgress, setTextureProgress] = useState(0);
   const [phase, setPhase] = useState("idle");
-  const [phaseLabel, setPhaseLabel] = useState("SYSTÈME EN ATTENTE");
+  const [phaseLabel, setPhaseLabel] = useState(
+    dictionary.singularity.phases.idle,
+  );
   const [displayTime, setDisplayTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -227,7 +231,7 @@ export default function SingularityExperience({ works }) {
     const handleEnded = () => {
       phaseRef.current = "complete";
       setPhase("complete");
-      setPhaseLabel("COLLECTION FUSIONNÉE");
+      setPhaseLabel(dictionary.singularity.phases.complete);
     };
 
     if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) markReady();
@@ -243,7 +247,7 @@ export default function SingularityExperience({ works }) {
       audioGraphRef.current?.context.close();
       audioGraphRef.current = null;
     };
-  }, []);
+  }, [dictionary.singularity.phases.complete]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -463,7 +467,8 @@ export default function SingularityExperience({ works }) {
       if (isRunning && timestamp - lastUiUpdate > 110) {
         lastUiUpdate = timestamp;
         setDisplayTime(sequenceTime);
-        const nextLabel = phaseFromTime(sequenceTime);
+        const nextLabel =
+          dictionary.singularity.phases[phaseFromTime(sequenceTime)];
         if (nextLabel !== lastPhaseLabel) {
           lastPhaseLabel = nextLabel;
           setPhaseLabel(nextLabel);
@@ -637,7 +642,7 @@ export default function SingularityExperience({ works }) {
       composer.dispose();
       renderer.dispose();
     };
-  }, [works]);
+  }, [works, dictionary.singularity.phases]);
 
   const startExperience = async () => {
     const audio = audioRef.current;
@@ -663,12 +668,10 @@ export default function SingularityExperience({ works }) {
       await audio.play();
       phaseRef.current = "running";
       setPhase("running");
-      setPhaseLabel("ÉMERGENCE");
+      setPhaseLabel(dictionary.singularity.phases.emergence);
       setDisplayTime(0);
     } catch {
-      setError(
-        "Le navigateur a bloqué le son. Réessayez après avoir interagi avec la page.",
-      );
+      setError(t("singularity.audioError"));
     }
   };
 
@@ -694,7 +697,7 @@ export default function SingularityExperience({ works }) {
           kind="captions"
           src="/audio/just-overture.vtt"
           srcLang="fr"
-          label="Description de l’ambiance sonore"
+          label={t("singularity.captions")}
         />
       </audio>
 
@@ -711,7 +714,8 @@ export default function SingularityExperience({ works }) {
         <div>
           <p className="eyebrow">( Singularity 031 )</p>
           <p className="mt-2 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-paper/45">
-            {String(works.length).padStart(2, "0")} œuvres en orbite
+            {String(works.length).padStart(2, "0")}{" "}
+            {t("singularity.worksOrbit")}
           </p>
         </div>
         <div className="flex items-center gap-5 sm:gap-8">
@@ -720,26 +724,28 @@ export default function SingularityExperience({ works }) {
             onClick={toggleMute}
             className="eyebrow pointer-events-auto transition-colors hover:text-blue"
           >
-            {isMuted ? "Son coupé" : "Son activé"}
+            {isMuted ? t("singularity.muted") : t("singularity.soundOn")}
           </button>
           <Link
             href="/"
             className="eyebrow pointer-events-auto border-b border-paper/45 pb-1 transition-colors hover:border-blue hover:text-blue"
           >
-            Quitter ↗
+            {t("singularity.quit")}
           </Link>
         </div>
       </header>
 
       <div className="absolute inset-x-3 bottom-3 z-40 flex items-end justify-between gap-6 border-b border-paper/35 pb-3 sm:inset-x-4 sm:bottom-4">
         <div>
-          <p className="eyebrow text-paper/45">État du système</p>
+          <p className="eyebrow text-paper/45">{t("singularity.system")}</p>
           <p className="mt-2 font-mono text-[0.6875rem] font-bold uppercase tracking-[0.1em]">
             {phaseLabel}
           </p>
         </div>
         <div className="text-right">
-          <p className="eyebrow text-paper/45">Temps orbital</p>
+          <p className="eyebrow text-paper/45">
+            {t("singularity.orbitalTime")}
+          </p>
           <p className="mt-2 font-mono text-[0.6875rem] font-bold tracking-[0.1em]">
             {formatTime(displayTime)} / {formatTime(duration)}
           </p>
@@ -750,15 +756,14 @@ export default function SingularityExperience({ works }) {
         className={`absolute inset-0 z-20 grid place-items-center px-4 text-center transition-all duration-1000 ${phase === "idle" ? "visible opacity-100" : "invisible scale-110 opacity-0"}`}
       >
         <div className="flex max-w-3xl flex-col items-center">
-          <p className="eyebrow mb-6 text-blue">NM* / PROTOCOLE 031</p>
+          <p className="eyebrow mb-6 text-blue">{t("singularity.protocol")}</p>
           <h1 className="display-type text-[clamp(4rem,12vw,11rem)]">
             SINGULARITY
             <br />
             031
           </h1>
           <p className="mt-7 max-w-lg text-base leading-[1.25] text-paper/55 sm:text-lg">
-            Toute la collection va entrer en fusion. Activez le protocole et
-            gardez le son allumé.
+            {t("singularity.intro")}
           </p>
 
           <button
@@ -774,8 +779,8 @@ export default function SingularityExperience({ works }) {
             />
             <span className="relative">
               {assetsReady
-                ? "Provoquer le collapse"
-                : `Chargement orbital · ${loadingPercent}%`}
+                ? t("singularity.start")
+                : t("singularity.loading", { percent: loadingPercent })}
             </span>
             <span className="relative text-lg transition-transform group-hover:translate-x-1">
               →
@@ -792,11 +797,11 @@ export default function SingularityExperience({ works }) {
       <section
         className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-4 text-center transition-all duration-1000 ${phase === "complete" ? "visible opacity-100" : "invisible translate-y-6 opacity-0"}`}
       >
-        <p className="eyebrow mb-5 text-blue">( Fusion accomplie )</p>
+        <p className="eyebrow mb-5 text-blue">{t("singularity.complete")}</p>
         <h2 className="display-type text-[clamp(3.5rem,10vw,9rem)]">
-          UNE COLLECTION.
+          {t("singularity.finalFirst")}
           <br />
-          UN SEUL ASTRE.
+          {t("singularity.finalSecond")}
         </h2>
         <div className="pointer-events-auto mt-8 flex flex-wrap justify-center gap-2">
           <button
@@ -804,13 +809,13 @@ export default function SingularityExperience({ works }) {
             onClick={startExperience}
             className="eyebrow rounded-full border border-paper px-6 py-3 transition-colors hover:border-blue hover:bg-blue"
           >
-            Rejouer ↻
+            {t("singularity.replay")}
           </button>
           <Link
             href="/paintings"
             className="eyebrow rounded-full bg-paper px-6 py-3 text-ink transition-colors hover:bg-blue hover:text-white"
           >
-            Explorer les œuvres ↗
+            {t("singularity.explore")}
           </Link>
         </div>
       </section>
