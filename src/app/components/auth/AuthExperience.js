@@ -39,7 +39,7 @@ const AUTH_CONTENT = {
   },
 };
 
-export default function AuthExperience({ mode }) {
+export default function AuthExperience({ mode, callbackUrl = "/account" }) {
   const router = useRouter();
   const content = AUTH_CONTENT[mode];
   const isRegister = mode === "register";
@@ -59,7 +59,7 @@ export default function AuthExperience({ mode }) {
 
     const callbacks = {
       onSuccess: () => {
-        router.push("/account");
+        router.push(callbackUrl);
         router.refresh();
       },
       onError: ({ error: authError }) => {
@@ -226,7 +226,7 @@ export default function AuthExperience({ mode }) {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink pt-3">
             <p className="text-sm text-ink/55">{content.alternateText}</p>
             <Link
-              href={content.alternateHref}
+              href={`${content.alternateHref}?callbackUrl=${encodeURIComponent(callbackUrl)}`}
               className="eyebrow border-b border-ink pb-1 transition-colors hover:border-blue hover:text-blue"
             >
               {content.alternateLabel} ↗

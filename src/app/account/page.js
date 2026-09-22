@@ -1,9 +1,18 @@
+import { desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/app/_lib/auth";
+import {
+  getObjects,
+  getWikimediaThumbnail,
+  isWikimediaThumbnail,
+} from "@/app/_lib/paintings";
 import AccountSignOut from "@/app/components/auth/AccountSignOut";
 import AnimatedHeroTitle from "@/app/components/ui/AnimatedHeroTitle";
 import Link from "@/app/components/ui/Link";
+import { db } from "@/db";
+import { favorite, ticketBooking } from "@/db/schema";
 
 export const metadata = {
   title: "Mon compte",
@@ -27,6 +36,28 @@ export default async function AccountPage() {
         year: "numeric",
       }).format(new Date(session.user.createdAt))
     : "Aujourd’hui";
+  const [bookings, favoriteRows, objects] = await Promise.all([
+    db
+      .select()
+      .from(ticketBooking)
+      .where(eq(ticketBooking.userId, session.user.id))
+      .orderBy(desc(ticketBooking.createdAt)),
+    db
+      .select({ slug: favorite.tableauId })
+      .from(favorite)
+      .where(eq(favorite.userId, session.user.id))
+      .orderBy(desc(favorite.createdAt)),
+    getObjects().catch(() => []),
+  ]);
+  const favoriteOrder = new Map(
+    favoriteRows.map((item, index) => [item.slug, index]),
+  );
+  const favoriteWorks = objects
+    .filter((work) => favoriteOrder.has(work.slug))
+    .sort(
+      (first, second) =>
+        favoriteOrder.get(first.slug) - favoriteOrder.get(second.slug),
+    );
 
   return (
     <main className="bg-paper">
@@ -141,6 +172,132 @@ export default async function AccountPage() {
         </div>
       </section>
 
+      <section
+        id="mes-billets"
+        className="border-b border-ink px-3 py-20 sm:px-4 sm:py-28"
+      >
+        <div className="grid gap-8 lg:grid-cols-[0.35fr_1fr]">
+          <div>
+            <p className="eyebrow text-ink/45">( Votre visite )</p>
+            <h2 className="tight-type mt-4 text-[clamp(3rem,7vw,7rem)] font-bold">
+              Mes billets<span className="text-blue">.</span>
+            </h2>
+          </div>
+
+          {bookings.length ? (
+            <div className="border-t border-ink">
+              {bookings.map((booking, index) => (
+                <article
+                  key={booking.id}
+                  className="grid gap-5 border-b border-ink py-6 sm:grid-cols-[4rem_1fr_auto] sm:items-center"
+                >
+                  <p className="font-mono text-[0.625rem] font-bold text-ink/40">
+                    {String(index + 1).padStart(2, "0")}
+                  </p>
+                  <div>
+                    <p className="tight-type text-2xl font-bold capitalize sm:text-4xl">
+                      {formatVisitDate(booking.visitDate)}
+                    </p>
+                    <p className="mt-2 font-mono text-[0.625rem] uppercase tracking-[0.05em] text-ink/50">
+                      {booking.ticketCount} billet
+                      {booking.ticketCount > 1 ? "s" : ""} · NM—
+                      {booking.id.slice(0, 8).toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-3xl font-bold tracking-[-0.05em]">
+                      {(booking.totalCents / 100).toLocaleString("fr-FR", {
+                        style: "currency",
+                        currency: "EUR",
+                      })}
+                    </p>
+                    <p className="eyebrow mt-2 text-blue">Confirmé</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-64 flex-col justify-between border border-ink p-5">
+              <p className="max-w-md text-xl text-ink/55">
+                Aucun billet pour le moment. Votre prochaine visite peut
+                commencer ici.
+              </p>
+              <Link
+                href="/billeterie"
+                className="eyebrow self-start rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue"
+              >
+                Prendre un billet →
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section
+        id="mes-favoris"
+        className="border-b border-ink px-3 py-20 sm:px-4 sm:py-28"
+      >
+        <div className="mb-10 flex items-end justify-between gap-6 border-b border-ink pb-4">
+          <div>
+            <p className="eyebrow text-ink/45">( Collection personnelle )</p>
+            <h2 className="tight-type mt-4 text-[clamp(3rem,7vw,7rem)] font-bold">
+              Mes favoris<span className="text-blue">.</span>
+            </h2>
+          </div>
+          <p className="eyebrow">
+            {String(favoriteWorks.length).padStart(2, "0")} œuvre
+            {favoriteWorks.length > 1 ? "s" : ""}
+          </p>
+        </div>
+
+        {favoriteWorks.length ? (
+          <div className="grid gap-x-4 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            {favoriteWorks.map((work, index) => (
+              <Link
+                key={work.slug}
+                href={`/paintings/${work.slug}`}
+                className="group block"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden bg-ink/[0.035]">
+                  <Image
+                    src={accountImageSource(work.image)}
+                    alt={work.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-contain p-5 transition-transform duration-700 group-hover:scale-[1.025]"
+                  />
+                  <span className="eyebrow absolute left-3 top-3 bg-paper px-2.5 py-2">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-5 border-t border-ink py-3">
+                  <div>
+                    <h3 className="text-xl font-bold tracking-[-0.04em]">
+                      {work.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-ink/50">{work.artist}</p>
+                  </div>
+                  <span className="text-blue">♥</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-64 flex-col justify-between border border-ink p-5">
+            <p className="max-w-md text-xl text-ink/55">
+              Survolez les œuvres de la collection et composez ici votre propre
+              sélection.
+            </p>
+            <Link
+              href="/paintings"
+              className="eyebrow self-start rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue"
+            >
+              Explorer la collection →
+            </Link>
+          </div>
+        )}
+      </section>
+
       <section className="grid md:grid-cols-3">
         {[
           {
@@ -186,4 +343,18 @@ export default async function AccountPage() {
       </section>
     </main>
   );
+}
+
+function formatVisitDate(value) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Paris",
+  }).format(new Date(`${value}T12:00:00+02:00`));
+}
+
+function accountImageSource(src) {
+  return isWikimediaThumbnail(src) ? getWikimediaThumbnail(src, 960) : src;
 }

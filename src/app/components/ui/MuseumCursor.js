@@ -16,39 +16,47 @@ export default function MuseumCursor() {
 
     let cursor;
     let cancelled = false;
+    const cursorClass = "has-museum-cursor";
+
+    document.documentElement.classList.add(cursorClass);
+    document.body.classList.add(cursorClass);
 
     const initializeCursor = async () => {
-      const { default: MouseFollower } = await import("mouse-follower");
+      try {
+        const { default: MouseFollower } = await import("mouse-follower");
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      MouseFollower.registerGSAP(gsap);
-      cursor = new MouseFollower({
-        className: "mf-cursor nm-cursor",
-        speed: 0.72,
-        ease: "expo.out",
-        skewing: 0.75,
-        skewingDelta: 0.001,
-        skewingDeltaMax: 0.1,
-        skewingText: 0,
-        skewingIcon: 0,
-        showTimeout: 50,
-        hideTimeout: 180,
-        stateDetection: {
-          "-pointer":
-            "a, button, [role='button'], label, input, select, textarea",
-          "-hidden": "iframe, [data-cursor-hidden]",
-        },
-      });
-
-      document.body.classList.add("has-museum-cursor");
+        MouseFollower.registerGSAP(gsap);
+        cursor = new MouseFollower({
+          className: "mf-cursor nm-cursor",
+          speed: 0.13,
+          ease: "power3.out",
+          skewing: 1.7,
+          skewingDelta: 0.0015,
+          skewingDeltaMax: 0.22,
+          skewingText: 0,
+          skewingIcon: 0,
+          showTimeout: 50,
+          hideTimeout: 180,
+          stateDetection: {
+            "-pointer":
+              "a, button, [role='button'], label, input, select, textarea",
+            "-hidden": "iframe, [data-cursor-hidden]",
+          },
+        });
+      } catch {
+        document.documentElement.classList.remove(cursorClass);
+        document.body.classList.remove(cursorClass);
+      }
     };
 
     initializeCursor();
 
     return () => {
       cancelled = true;
-      document.body.classList.remove("has-museum-cursor");
+      document.documentElement.classList.remove(cursorClass);
+      document.body.classList.remove(cursorClass);
       cursor?.destroy();
     };
   }, []);

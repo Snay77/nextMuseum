@@ -6,6 +6,10 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { useStore } from "../../_lib/store";
+import {
+  LOCOMOTIVE_START_EVENT,
+  LOCOMOTIVE_STOP_EVENT,
+} from "../layout/SmoothScroll";
 import Link from "../ui/Link";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -17,6 +21,8 @@ const CARD_HEIGHT = 3.45;
 const VERTICAL_STEP = 0.85;
 const WAVE_AMPLITUDE = 0.42;
 const WAVE_FREQUENCY = 0.65;
+const FLAT_CARD_WIDTH = 2 * RADIUS * Math.sin(CARD_ARC / 2);
+const FLAT_CARD_AREA = FLAT_CARD_WIDTH * CARD_HEIGHT;
 
 const IMAGE_OVERRIDES = {
   "the-fighting-temeraire":
@@ -119,32 +125,104 @@ function createBackTexture(texture) {
   return backTexture;
 }
 
+function createFlatCard(geometry, aspectRatio = FLAT_CARD_WIDTH / CARD_HEIGHT) {
+  const uvs = geometry.getAttribute("uv");
+  const safeRatio = THREE.MathUtils.clamp(aspectRatio, 0.52, 2.2);
+  const width = Math.sqrt(FLAT_CARD_AREA * safeRatio);
+  const height = width / safeRatio;
+  const positions = new Float32Array(uvs.count * 3);
+
+  for (let index = 0; index < uvs.count; index += 1) {
+    positions[index * 3] = (uvs.getX(index) - 0.5) * width;
+    positions[index * 3 + 1] = (uvs.getY(index) - 0.5) * height;
+    positions[index * 3 + 2] = 0;
+  }
+
+  return { height, positions, width };
+}
+
+function morphCardGeometry(geometry, curvedPositions, flatPositions, progress) {
+  const position = geometry.getAttribute("position");
+
+  for (let index = 0; index < position.array.length; index += 1) {
+    position.array[index] = THREE.MathUtils.lerp(
+      curvedPositions[index],
+      flatPositions[index],
+      progress,
+    );
+  }
+
+  position.needsUpdate = true;
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+}
+
+function getProjectedCardRect(cardGroup, geometry, camera, canvas) {
+  geometry.computeBoundingBox();
+  cardGroup.updateWorldMatrix(true, true);
+  camera.updateMatrixWorld(true);
+
+  const bounds = geometry.boundingBox;
+  const canvasRect = canvas.getBoundingClientRect();
+
+  if (!bounds || !canvasRect.width || !canvasRect.height) return null;
+
+  const corners = [
+    new THREE.Vector3(bounds.min.x, bounds.min.y, 0),
+    new THREE.Vector3(bounds.max.x, bounds.min.y, 0),
+    new THREE.Vector3(bounds.max.x, bounds.max.y, 0),
+    new THREE.Vector3(bounds.min.x, bounds.max.y, 0),
+  ];
+  const points = corners.map((corner) => {
+    const projected = corner
+      .applyMatrix4(cardGroup.matrixWorld)
+      .project(camera);
+
+    return {
+      x: canvasRect.left + (projected.x * 0.5 + 0.5) * canvasRect.width,
+      y: canvasRect.top + (-projected.y * 0.5 + 0.5) * canvasRect.height,
+    };
+  });
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  const rect = {
+    left: Math.min(...xs),
+    top: Math.min(...ys),
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  };
+
+  return Object.values(rect).every(Number.isFinite) &&
+    rect.width > 24 &&
+    rect.height > 24
+    ? rect
+    : null;
+}
+
 export default function ArtSpiral({ works }) {
   const sectionRef = useRef(null);
   const stageRef = useRef(null);
   const canvasRef = useRef(null);
   const targetFocusRef = useRef(0);
+  const startSpiralTransitionRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [canInitialize, setCanInitialize] = useState(false);
-  const isHeroAnimationComplete = useStore(
-    (state) => state.isHeroAnimationComplete,
-  );
   const isTransitionActive = useStore((state) => state.isTransitionActive);
 
   useEffect(() => {
-    if (!isHeroAnimationComplete || isTransitionActive || canInitialize) return;
+    if (isTransitionActive || canInitialize) return;
 
     const initialize = () => {
       setCanInitialize(true);
     };
-    const idleId = window.requestIdleCallback?.(initialize, { timeout: 1200 });
-    const fallbackTimer = idleId ? null : window.setTimeout(initialize, 160);
+    const idleId = window.requestIdleCallback?.(initialize, { timeout: 250 });
+    const fallbackTimer = idleId ? null : window.setTimeout(initialize, 80);
 
     return () => {
       if (idleId) window.cancelIdleCallback?.(idleId);
       if (fallbackTimer) window.clearTimeout(fallbackTimer);
     };
-  }, [canInitialize, isHeroAnimationComplete, isTransitionActive]);
+  }, [canInitialize, isTransitionActive]);
 
   useGSAP(
     () => {
@@ -213,6 +291,9 @@ export default function ArtSpiral({ works }) {
       const ribbonWave =
         Math.sin(centerAngle * WAVE_FREQUENCY) * WAVE_AMPLITUDE;
       const geometry = createCurvedCard(centerAngle);
+      const curvedPositions = Float32Array.from(
+        geometry.getAttribute("position").array,
+      );
       cardGroup.position.set(
         Math.sin(centerAngle) * RADIUS,
         -index * VERTICAL_STEP + ribbonWave,
@@ -226,13 +307,41 @@ export default function ArtSpiral({ works }) {
         new THREE.Mesh(geometry, backMaterial),
       );
       ribbon.add(cardGroup);
-      return { cardGroup, geometry, frontMaterial, backMaterial };
+      return {
+        work,
+        cardGroup,
+        geometry,
+        curvedPositions,
+        frontMaterial,
+        backMaterial,
+      };
     });
 
     const textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin("anonymous");
     let disposed = false;
     let textureCursor = 0;
+    let hydratedTextureCount = 0;
+    const preloadRoot = document.documentElement;
+
+    const reportTextureProgress = () => {
+      preloadRoot.dataset.artSpiralLoaded = String(hydratedTextureCount);
+      preloadRoot.dataset.artSpiralTotal = String(works.length);
+      preloadRoot.dataset.artSpiralReady = String(
+        hydratedTextureCount >= works.length,
+      );
+      window.dispatchEvent(
+        new CustomEvent("museum:art-spiral-progress", {
+          detail: {
+            loaded: hydratedTextureCount,
+            total: works.length,
+            ready: hydratedTextureCount >= works.length,
+          },
+        }),
+      );
+    };
+
+    reportTextureProgress();
 
     const hydrateTextures = async () => {
       while (!disposed && textureCursor < works.length) {
@@ -261,13 +370,18 @@ export default function ArtSpiral({ works }) {
           card.backMaterial.needsUpdate = true;
         } catch {
           // Le placeholder titré reste visible si une source distante échoue.
+        } finally {
+          hydratedTextureCount += 1;
+          reportTextureProgress();
         }
       }
     };
 
-    for (let worker = 0; worker < 2; worker += 1) {
-      hydrateTextures();
-    }
+    const textureWorkers = Array.from(
+      { length: Math.min(4, works.length) },
+      () => hydrateTextures(),
+    );
+    void Promise.all(textureWorkers);
 
     const resize = () => {
       const width = stage.clientWidth;
@@ -290,6 +404,269 @@ export default function ArtSpiral({ works }) {
     const raycaster = new THREE.Raycaster();
     let hoveredCard = null;
     let pointerStart = null;
+    let selectedCard = null;
+    let transitionTimeline = null;
+    let isSelecting = false;
+    let pinnedStageStyle;
+    const motionState = { focusEase: 0.085 };
+
+    const pinStageToViewport = () => {
+      const stage = stageRef.current;
+
+      if (!stage || pinnedStageStyle !== undefined) return;
+
+      const rect = stage.getBoundingClientRect();
+      pinnedStageStyle = stage.getAttribute("style");
+      Object.assign(stage.style, {
+        position: "fixed",
+        inset: "auto",
+        top: `${rect.top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        zIndex: "100",
+      });
+    };
+
+    const restorePinnedStage = () => {
+      const stage = stageRef.current;
+
+      if (!stage || pinnedStageStyle === undefined) return;
+
+      if (pinnedStageStyle) {
+        stage.setAttribute("style", pinnedStageStyle);
+      } else {
+        stage.removeAttribute("style");
+      }
+      pinnedStageStyle = undefined;
+    };
+
+    const startDefaultTransition = (workSlug) => {
+      const store = useStore.getState();
+
+      window.dispatchEvent(new Event(LOCOMOTIVE_START_EVENT));
+      store.setTransitionType("default");
+      store.setDestinationUrl(`/paintings/${workSlug}`);
+      store.setIsTransitionActive(true);
+    };
+
+    const startSpiralTransition = (workSlug) => {
+      const store = useStore.getState();
+      const card = cards.find((item) => item.work.slug === workSlug);
+
+      if (isSelecting || store.isTransitionActive) return true;
+      if (!card) return false;
+
+      const textureImage = card.frontMaterial.map?.image;
+      const hasTexture =
+        textureImage &&
+        !(textureImage instanceof HTMLCanvasElement) &&
+        Number(textureImage.naturalWidth ?? textureImage.width) > 0 &&
+        Number(textureImage.naturalHeight ?? textureImage.height) > 0;
+
+      if (!hasTexture) return false;
+
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const isMobile = window.matchMedia("(max-width: 47.99rem)").matches;
+      const imageSource = IMAGE_OVERRIDES[workSlug] ?? card.work.image;
+      const naturalWidth = Number(
+        textureImage.naturalWidth ?? textureImage.width,
+      );
+      const naturalHeight = Number(
+        textureImage.naturalHeight ?? textureImage.height,
+      );
+      const flatCard = createFlatCard(
+        card.geometry,
+        naturalWidth / naturalHeight,
+      );
+      const startSharedTransition = () => {
+        const sourceRect = getProjectedCardRect(
+          card.cardGroup,
+          card.geometry,
+          camera,
+          canvas,
+        );
+
+        if (!sourceRect || !imageSource) {
+          startDefaultTransition(workSlug);
+          return;
+        }
+
+        store.setArtworkTransition({
+          id: `spiral-${workSlug}-${Date.now()}`,
+          origin: "spiral",
+          slug: workSlug,
+          title: card.work.title,
+          direction: "to-artwork",
+          image: imageSource,
+          naturalWidth,
+          naturalHeight,
+          objectFit: "fill",
+          objectPosition: "50% 50%",
+          sourceRotation: 0,
+          sourceRect,
+        });
+        store.setTransitionType("artwork");
+        store.setDestinationUrl(`/paintings/${workSlug}`);
+        store.setIsTransitionActive(true);
+      };
+
+      isSelecting = true;
+      selectedCard = card.cardGroup;
+      hoveredCard = null;
+      pointerStart = null;
+      canvas.style.cursor = "default";
+      canvas.style.pointerEvents = "none";
+      pinStageToViewport();
+      window.dispatchEvent(new Event(LOCOMOTIVE_STOP_EVENT));
+
+      scene.attach(card.cardGroup);
+      card.cardGroup.children.forEach((mesh) => {
+        mesh.renderOrder = 1000;
+        mesh.material.transparent = true;
+        mesh.material.depthTest = false;
+        mesh.material.depthWrite = false;
+        mesh.material.opacity = 1;
+        mesh.material.needsUpdate = true;
+      });
+
+      if (reduceMotion) {
+        morphCardGeometry(
+          card.geometry,
+          card.curvedPositions,
+          flatCard.positions,
+          1,
+        );
+        card.cardGroup.rotation.set(0, 0, 0);
+        startSharedTransition();
+        return true;
+      }
+
+      const currentPosition = card.cardGroup.position.clone();
+      const cameraDistance = isMobile ? 11.4 : 8.5;
+      const visibleHeight =
+        2 * cameraDistance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const visibleWidth = visibleHeight * camera.aspect;
+      const targetScale = Math.min(
+        isMobile ? 0.92 : 1.04,
+        (visibleWidth * (isMobile ? 0.72 : 0.46)) / flatCard.width,
+        (visibleHeight * 0.58) / flatCard.height,
+      );
+      const targetPosition = {
+        x: THREE.MathUtils.clamp(currentPosition.x * 0.34, -1.65, 1.65),
+        y:
+          camera.position.y +
+          THREE.MathUtils.clamp(
+            (currentPosition.y - camera.position.y) * 0.34,
+            -1.1,
+            1.1,
+          ),
+        z: camera.position.z - cameraDistance,
+      };
+      const flattenState = { progress: 0 };
+
+      for (const otherCard of cards) {
+        if (otherCard === card) continue;
+        otherCard.frontMaterial.transparent = true;
+        otherCard.backMaterial.transparent = true;
+        otherCard.frontMaterial.depthWrite = false;
+        otherCard.backMaterial.depthWrite = false;
+        otherCard.frontMaterial.needsUpdate = true;
+        otherCard.backMaterial.needsUpdate = true;
+      }
+
+      transitionTimeline = gsap.timeline();
+      transitionTimeline
+        .to(
+          motionState,
+          { focusEase: 0.012, duration: 0.2, ease: "power2.out" },
+          0,
+        )
+        .to(ribbon.position, { z: -2, duration: 0.4, ease: "power3.out" }, 0.1);
+
+      for (const otherCard of cards) {
+        if (otherCard === card) continue;
+
+        transitionTimeline
+          .to(
+            [otherCard.frontMaterial, otherCard.backMaterial],
+            {
+              opacity: 0.06,
+              duration: 0.4,
+              ease: "power2.out",
+            },
+            0.1,
+          )
+          .to(
+            otherCard.cardGroup.scale,
+            {
+              x: 0.94,
+              y: 0.94,
+              z: 0.94,
+              duration: 0.4,
+              ease: "power2.out",
+            },
+            0.1,
+          );
+      }
+
+      transitionTimeline
+        .to(
+          card.cardGroup.position,
+          {
+            ...targetPosition,
+            duration: isMobile ? 0.35 : 0.5,
+            ease: "expo.inOut",
+          },
+          0.15,
+        )
+        .to(
+          card.cardGroup.rotation,
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            duration: isMobile ? 0.35 : 0.5,
+            ease: "expo.inOut",
+          },
+          0.15,
+        )
+        .to(
+          card.cardGroup.scale,
+          {
+            x: targetScale,
+            y: targetScale,
+            z: targetScale,
+            duration: isMobile ? 0.35 : 0.5,
+            ease: "expo.inOut",
+          },
+          0.15,
+        )
+        .to(
+          flattenState,
+          {
+            progress: 1,
+            duration: isMobile ? 0.35 : 0.5,
+            ease: "expo.inOut",
+            onUpdate: () => {
+              morphCardGeometry(
+                card.geometry,
+                card.curvedPositions,
+                flatCard.positions,
+                flattenState.progress,
+              );
+            },
+          },
+          0.15,
+        )
+        .call(startSharedTransition, [], isMobile ? 0.48 : 0.65);
+
+      return true;
+    };
+
+    startSpiralTransitionRef.current = startSpiralTransition;
 
     const getCardAtPointer = (event) => {
       const bounds = canvas.getBoundingClientRect();
@@ -302,6 +679,7 @@ export default function ArtSpiral({ works }) {
     };
 
     const updateHover = (event) => {
+      if (isSelecting) return;
       hoveredCard = getCardAtPointer(event);
       canvas.style.cursor = hoveredCard ? "pointer" : "default";
     };
@@ -312,7 +690,7 @@ export default function ArtSpiral({ works }) {
     };
 
     const handlePointerDown = (event) => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || isSelecting) return;
 
       pointerStart = {
         id: event.pointerId,
@@ -338,8 +716,9 @@ export default function ArtSpiral({ works }) {
 
       if (!workSlug || store.isTransitionActive) return;
 
-      store.setDestinationUrl(`/paintings/${workSlug}`);
-      store.setIsTransitionActive(true);
+      if (!startSpiralTransition(workSlug)) {
+        startDefaultTransition(workSlug);
+      }
     };
 
     const cancelPointer = () => {
@@ -356,7 +735,8 @@ export default function ArtSpiral({ works }) {
     let frameId;
 
     const render = () => {
-      currentFocus += (targetFocusRef.current - currentFocus) * 0.085;
+      currentFocus +=
+        (targetFocusRef.current - currentFocus) * motionState.focusEase;
       ribbon.rotation.y = -currentFocus * ANGLE_STEP;
       ribbon.position.y =
         currentFocus * VERTICAL_STEP -
@@ -364,6 +744,7 @@ export default function ArtSpiral({ works }) {
       ribbon.rotation.z = Math.sin(currentFocus * 0.32) * 0.035;
 
       for (const card of cards) {
+        if (isSelecting || card.cardGroup === selectedCard) continue;
         const targetScale = card.cardGroup === hoveredCard ? 1.085 : 1;
         card.cardGroup.userData.hoverScale +=
           (targetScale - card.cardGroup.userData.hoverScale) * 0.14;
@@ -378,6 +759,12 @@ export default function ArtSpiral({ works }) {
 
     return () => {
       disposed = true;
+      delete preloadRoot.dataset.artSpiralLoaded;
+      delete preloadRoot.dataset.artSpiralTotal;
+      delete preloadRoot.dataset.artSpiralReady;
+      startSpiralTransitionRef.current = null;
+      transitionTimeline?.kill();
+      restorePinnedStage();
       window.cancelAnimationFrame(frameId);
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("pointermove", updateHover);
@@ -402,9 +789,21 @@ export default function ArtSpiral({ works }) {
 
   if (!activeWork) return null;
 
+  const handleActiveWorkClick = (event) => {
+    const isModifiedClick =
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+
+    if (isModifiedClick || event.currentTarget.target === "_blank") return;
+
+    if (startSpiralTransitionRef.current?.(activeWork.slug)) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <section
       ref={sectionRef}
+      data-artwork-spiral-page
       className="relative bg-paper text-ink"
       style={{ height: `${Math.max(640, works.length * 24)}vh` }}
     >
@@ -420,14 +819,6 @@ export default function ArtSpiral({ works }) {
             <br />
             Faites défiler ↓
           </p>
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 z-0 grid place-items-center">
-          <h2 className="display-type text-center text-[clamp(4.5rem,14vw,13rem)] text-ink/10">
-            ART EN
-            <br />
-            MOUVEMENT
-          </h2>
         </div>
 
         <canvas
@@ -448,6 +839,7 @@ export default function ArtSpiral({ works }) {
           <Link
             className="pointer-events-auto eyebrow rounded-full bg-ink px-5 py-3 text-paper transition-colors hover:bg-blue hover:text-white"
             href={`/paintings/${activeWork.slug}`}
+            onClick={handleActiveWorkClick}
           >
             Voir l’œuvre ↗
           </Link>

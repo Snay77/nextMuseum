@@ -12,6 +12,8 @@ export const LOCOMOTIVE_REFRESH_EVENT = "new-museum:scroll-refresh";
 export const LOCOMOTIVE_RESIZE_EVENT = "new-museum:scroll-resize";
 export const LOCOMOTIVE_SCROLL_TO_EVENT = "new-museum:scroll-to";
 export const LOCOMOTIVE_SCROLL_TOP_EVENT = "new-museum:scroll-top";
+export const LOCOMOTIVE_STOP_EVENT = "new-museum:scroll-stop";
+export const LOCOMOTIVE_START_EVENT = "new-museum:scroll-start";
 
 export default function SmoothScroll({ children }) {
   const locomotiveRef = useRef(null);
@@ -77,6 +79,14 @@ export default function SmoothScroll({ children }) {
       ScrollTrigger.refresh();
     };
 
+    const stopLocomotive = () => {
+      locomotiveRef.current?.stop();
+    };
+
+    const startLocomotive = () => {
+      locomotiveRef.current?.start();
+    };
+
     const locomotive = createLocomotive();
     const refreshFrame = requestAnimationFrame(() => {
       locomotive.resize();
@@ -87,6 +97,8 @@ export default function SmoothScroll({ children }) {
     window.addEventListener(LOCOMOTIVE_RESIZE_EVENT, resizeLocomotive);
     window.addEventListener(LOCOMOTIVE_SCROLL_TO_EVENT, scrollToPosition);
     window.addEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
+    window.addEventListener(LOCOMOTIVE_STOP_EVENT, stopLocomotive);
+    window.addEventListener(LOCOMOTIVE_START_EVENT, startLocomotive);
 
     return () => {
       cancelAnimationFrame(refreshFrame);
@@ -97,6 +109,8 @@ export default function SmoothScroll({ children }) {
       window.removeEventListener(LOCOMOTIVE_RESIZE_EVENT, resizeLocomotive);
       window.removeEventListener(LOCOMOTIVE_SCROLL_TO_EVENT, scrollToPosition);
       window.removeEventListener(LOCOMOTIVE_SCROLL_TOP_EVENT, scrollToTop);
+      window.removeEventListener(LOCOMOTIVE_STOP_EVENT, stopLocomotive);
+      window.removeEventListener(LOCOMOTIVE_START_EVENT, startLocomotive);
       locomotiveRef.current?.destroy();
       locomotiveRef.current = null;
     };

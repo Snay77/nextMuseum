@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "@/app/_lib/auth-client";
+import {
+  TICKET_OPTIONS as options,
+  PENDING_TICKET_KEY,
+  TICKET_TYPES as tickets,
+} from "@/app/_lib/ticketing";
 
 const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -15,62 +22,6 @@ const selectedDateFormatter = new Intl.DateTimeFormat("fr-FR", {
   month: "long",
   year: "numeric",
 });
-
-const tickets = [
-  {
-    id: "adult",
-    label: "Entrée adulte",
-    detail: "À partir de 26 ans",
-    price: 24,
-  },
-  { id: "child", label: "Entrée -12 ans", detail: "De 5 à 11 ans", price: 12 },
-  { id: "young", label: "Entrée jeune", detail: "De 12 à 25 ans", price: 18 },
-  {
-    id: "jobseeker",
-    label: "Demandeur d’emploi",
-    detail: "Sur justificatif",
-    price: 18,
-  },
-  {
-    id: "reduced-mobility",
-    label: "Entrée PMR",
-    detail: "Sur justificatif",
-    price: 18,
-  },
-  {
-    id: "senior",
-    label: "Entrée senior",
-    detail: "À partir de 65 ans",
-    price: 18,
-  },
-  {
-    id: "group",
-    label: "Tarif groupe",
-    detail: "Plus de 10 personnes",
-    price: 15,
-  },
-  {
-    id: "under-five",
-    label: "Moins de 5 ans",
-    detail: "Sur justificatif",
-    price: 0,
-  },
-];
-
-const options = [
-  {
-    id: "audioguide",
-    label: "Audioguide",
-    detail: "Disponible en 6 langues",
-    price: 2,
-  },
-  {
-    id: "paper-guide",
-    label: "Guide papier",
-    detail: "Édition de la collection",
-    price: 4,
-  },
-];
 
 function parseDateKey(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -246,12 +197,56 @@ function DateSelector({ initialDate, selectedDate, onSelect }) {
 }
 
 export default function TicketingForm({ initialDate }) {
+  const router = useRouter();
+  const { data: session, isPending: isSessionPending } = useSession();
   const firstAvailableDate = getFirstAvailableDate(initialDate);
   const [selectedDate, setSelectedDate] = useState(firstAvailableDate);
   const [quantities, setQuantities] = useState(() =>
     Object.fromEntries(tickets.map((ticket) => [ticket.id, 0])),
   );
   const [selectedOptions, setSelectedOptions] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
+
+  useEffect(() => {
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(PENDING_TICKET_KEY));
+      if (!pending || pending.version !== 1) return;
+
+      const restoredDate =
+        typeof pending.selectedDate === "string" &&
+        pending.selectedDate >= initialDate &&
+        parseDateKey(pending.selectedDate).getDay() !== 1
+          ? pending.selectedDate
+          : firstAvailableDate;
+      setSelectedDate(restoredDate);
+      setQuantities(
+        Object.fromEntries(
+          tickets.map((ticket) => [
+            ticket.id,
+            Math.max(
+              0,
+              Math.min(
+                20,
+                Number.parseInt(pending.quantities?.[ticket.id], 10) || 0,
+              ),
+            ),
+          ]),
+        ),
+      );
+      setSelectedOptions(
+        Object.fromEntries(
+          options.map((option) => [
+            option.id,
+            pending.selectedOptions?.[option.id] === true,
+          ]),
+        ),
+      );
+    } catch {
+      sessionStorage.removeItem(PENDING_TICKET_KEY);
+    }
+  }, [firstAvailableDate, initialDate]);
 
   const ticketCount = Object.values(quantities).reduce(
     (sum, value) => sum + value,
@@ -277,6 +272,53 @@ export default function TicketingForm({ initialDate }) {
       ...current,
       [id]: Math.max(0, current[id] + amount),
     }));
+  }
+
+  async function handleBooking() {
+    if (!ticketCount || isSubmitting || isSessionPending) return;
+    setSubmitError("");
+    const selection = {
+      version: 1,
+      selectedDate,
+      quantities,
+      selectedOptions,
+    };
+
+    if (!session) {
+      sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
+      router.push("/login?callbackUrl=%2Fbilleterie%3Fresume%3D1");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitDate: selectedDate,
+          quantities,
+          selectedOptions,
+        }),
+      });
+      const payload = await response.json();
+
+      if (response.status === 401) {
+        sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
+        router.push("/login?callbackUrl=%2Fbilleterie%3Fresume%3D1");
+        return;
+      }
+      if (!response.ok)
+        throw new Error(payload.error || "La réservation a échoué.");
+
+      sessionStorage.removeItem(PENDING_TICKET_KEY);
+      setConfirmedBooking(payload.booking);
+      router.refresh();
+    } catch (error) {
+      setSubmitError(error.message || "La réservation a échoué.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -442,13 +484,40 @@ export default function TicketingForm({ initialDate }) {
             {total} €
           </output>
         </div>
-        <button
-          type="button"
-          disabled={!ticketCount}
-          className="w-full cursor-pointer rounded-full bg-white px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-        >
-          Continuer →
-        </button>
+        {confirmedBooking ? (
+          <div className="border-y border-white/50 py-5">
+            <p className="eyebrow text-white/60">Réservation confirmée</p>
+            <p className="mt-2 text-2xl font-bold">
+              NM—{confirmedBooking.id.slice(0, 8).toUpperCase()}
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/account#mes-billets")}
+              className="mt-5 w-full cursor-pointer rounded-full bg-white px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-white"
+            >
+              Voir dans mon compte →
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={!ticketCount || isSubmitting || isSessionPending}
+            onClick={handleBooking}
+            aria-busy={isSubmitting}
+            className="w-full cursor-pointer rounded-full bg-white px-5 py-4 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            {isSubmitting
+              ? "Confirmation…"
+              : session
+                ? "Confirmer la réservation →"
+                : "Se connecter et continuer →"}
+          </button>
+        )}
+        {submitError ? (
+          <p className="mt-3 text-center text-xs font-bold" role="alert">
+            {submitError}
+          </p>
+        ) : null}
         <p className="mt-4 text-center text-xs text-white/55">
           Paiement sécurisé · Billets échangeables
         </p>

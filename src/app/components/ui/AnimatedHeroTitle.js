@@ -58,6 +58,7 @@ export default function AnimatedHeroTitle({
       const stars = titleRef.current.querySelectorAll(
         "[data-animated-title-star]",
       );
+      const animatedElements = [...letters, ...stars];
       const reduceMotion = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
@@ -69,17 +70,19 @@ export default function AnimatedHeroTitle({
           transformOrigin: "50% 100%",
           yPercent: 135,
         });
-        gsap.set(stars, {
-          autoAlpha: 0,
-          rotation: -40,
-          scale: 0,
-          transformOrigin: "50% 50%",
-        });
+        if (stars.length) {
+          gsap.set(stars, {
+            autoAlpha: 0,
+            rotation: -40,
+            scale: 0,
+            transformOrigin: "50% 50%",
+          });
+        }
         return;
       }
 
       if (reduceMotion) {
-        gsap.set([letters, stars], {
+        gsap.set(animatedElements, {
           autoAlpha: 1,
           clearProps: "transform",
         });
@@ -92,12 +95,14 @@ export default function AnimatedHeroTitle({
         transformOrigin: "50% 100%",
         yPercent: 135,
       });
-      gsap.set(stars, {
-        autoAlpha: 0,
-        rotation: -40,
-        scale: 0,
-        transformOrigin: "50% 50%",
-      });
+      if (stars.length) {
+        gsap.set(stars, {
+          autoAlpha: 0,
+          rotation: -40,
+          scale: 0,
+          transformOrigin: "50% 50%",
+        });
+      }
 
       const timeline = gsap.timeline({ delay });
 
@@ -124,7 +129,7 @@ export default function AnimatedHeroTitle({
         );
       }
 
-      timeline.set([letters, stars], { clearProps: "transform" });
+      timeline.set(animatedElements, { clearProps: "transform" });
     },
     {
       scope: titleRef,

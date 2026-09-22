@@ -71,6 +71,164 @@ const addOpeningBands = (timeline, bands, position, duration = 0.68) => {
   });
 };
 
+const waitForImage = (source, signal) =>
+  new Promise((resolve) => {
+    if (!source || signal.aborted) {
+      resolve();
+      return;
+    }
+
+    const image = new Image();
+    const timeout = window.setTimeout(finish, 12000);
+
+    function finish() {
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+      resolve();
+    }
+
+    image.onload = finish;
+    image.onerror = finish;
+    signal.addEventListener("abort", finish, { once: true });
+    image.src = source;
+
+    if (image.complete) finish();
+  });
+
+function preloadInitialPage({ page, includeSpiral, onProgress }) {
+  const controller = new AbortController();
+  const { signal } = controller;
+  const imageSources = Array.from(page.querySelectorAll("img"))
+    .map((image) => image.currentSrc || image.src)
+    .filter(Boolean);
+  const uniqueImageSources = Array.from(new Set(imageSources));
+  let loadedImages = 0;
+  let fontsReady = !document.fonts;
+  let windowReady = document.readyState === "complete";
+  let spiralLoaded = Number(
+    document.documentElement.dataset.artSpiralLoaded ?? 0,
+  );
+  let spiralTotal = Number(
+    document.documentElement.dataset.artSpiralTotal ?? (includeSpiral ? 1 : 0),
+  );
+  let spiralReady =
+    !includeSpiral ||
+    document.documentElement.dataset.artSpiralReady === "true";
+
+  const report = () => {
+    const imageProgress = uniqueImageSources.length
+      ? loadedImages / uniqueImageSources.length
+      : 1;
+    const spiralProgress = includeSpiral
+      ? spiralReady
+        ? 1
+        : spiralLoaded / Math.max(1, spiralTotal)
+      : 1;
+    const progress = includeSpiral
+      ? imageProgress * 0.35 +
+        Number(fontsReady) * 0.1 +
+        Number(windowReady) * 0.1 +
+        spiralProgress * 0.45
+      : imageProgress * 0.75 +
+        Number(fontsReady) * 0.15 +
+        Number(windowReady) * 0.1;
+
+    onProgress(Math.min(0.99, Math.max(0, progress)));
+  };
+
+  const onSpiralProgress = (event) => {
+    spiralLoaded = Number(event.detail?.loaded ?? spiralLoaded);
+    spiralTotal = Number(event.detail?.total ?? spiralTotal);
+    spiralReady = Boolean(event.detail?.ready);
+    report();
+  };
+
+  if (includeSpiral) {
+    window.addEventListener("museum:art-spiral-progress", onSpiralProgress);
+  }
+
+  const imagesPromise = Promise.allSettled(
+    uniqueImageSources.map((source) =>
+      waitForImage(source, signal).then(() => {
+        loadedImages += 1;
+        report();
+      }),
+    ),
+  );
+  const fontsPromise = document.fonts
+    ? document.fonts.ready.then(() => {
+        fontsReady = true;
+        report();
+      })
+    : Promise.resolve();
+  const windowPromise = new Promise((resolve) => {
+    if (windowReady) {
+      resolve();
+      return;
+    }
+
+    window.addEventListener(
+      "load",
+      () => {
+        windowReady = true;
+        report();
+        resolve();
+      },
+      { once: true },
+    );
+  });
+  const spiralPromise = includeSpiral
+    ? new Promise((resolve) => {
+        if (spiralReady) {
+          resolve();
+          return;
+        }
+
+        const timeout = window.setTimeout(resolve, 15000);
+        const onReady = (event) => {
+          if (!event.detail?.ready) return;
+          window.clearTimeout(timeout);
+          window.removeEventListener("museum:art-spiral-progress", onReady);
+          resolve();
+        };
+        window.addEventListener("museum:art-spiral-progress", onReady);
+        signal.addEventListener(
+          "abort",
+          () => {
+            window.clearTimeout(timeout);
+            window.removeEventListener("museum:art-spiral-progress", onReady);
+            resolve();
+          },
+          { once: true },
+        );
+      })
+    : Promise.resolve();
+
+  report();
+
+  return {
+    cancel: () => {
+      controller.abort();
+      window.removeEventListener(
+        "museum:art-spiral-progress",
+        onSpiralProgress,
+      );
+    },
+    promise: Promise.all([
+      imagesPromise,
+      fontsPromise,
+      windowPromise,
+      spiralPromise,
+    ]).finally(() => {
+      window.removeEventListener(
+        "museum:art-spiral-progress",
+        onSpiralProgress,
+      );
+    }),
+  };
+}
+
 export default function Template({ children }) {
   const rootRef = useRef(null);
   const transitionRef = useRef(null);
@@ -78,6 +236,8 @@ export default function Template({ children }) {
   const transitionLabelRef = useRef(null);
   const introRef = useRef(null);
   const introTimelineRef = useRef(null);
+  const introProgressFillRef = useRef(null);
+  const introProgressValueRef = useRef(null);
   const pageRef = useRef(null);
   const pathname = usePathname();
   const isImmersiveRoute = pathname === "/singularity";
@@ -145,6 +305,30 @@ export default function Template({ children }) {
       const star = intro.querySelector("[data-intro-star]");
       const logo = intro.querySelector("[data-intro-logo]");
       const skip = intro.querySelector("[data-intro-skip]");
+      const progressBar = intro.querySelector("[data-intro-progress]");
+      const progressFill = introProgressFillRef.current;
+      const progressValue = introProgressValueRef.current;
+      const progressState = { value: 0 };
+      let cancelled = false;
+      let finalTimeline;
+
+      const renderProgress = () => {
+        const roundedProgress = Math.round(progressState.value);
+        if (progressFill) progressFill.style.width = `${roundedProgress}%`;
+        if (progressValue) {
+          progressValue.textContent = String(roundedProgress).padStart(2, "0");
+        }
+      };
+
+      const setProgress = (progress) => {
+        gsap.to(progressState, {
+          value: progress * 100,
+          duration: 0.38,
+          ease: "power2.out",
+          overwrite: true,
+          onUpdate: renderProgress,
+        });
+      };
 
       setScrollLock(true);
       gsap.set(page, { autoAlpha: 0 });
@@ -164,14 +348,25 @@ export default function Template({ children }) {
         scale: 0,
         transformOrigin: "50% 50%",
       });
-      gsap.set(skip, { autoAlpha: 0 });
+      gsap.set([skip, progressBar], { autoAlpha: 0 });
+      gsap.set(progressFill, { width: "0%" });
+      renderProgress();
 
       const timeline = gsap.timeline();
       introTimelineRef.current = timeline;
 
+      const drawingPromise = new Promise((resolve) => {
+        timeline.call(resolve, [], 3.3);
+      });
+      const preloader = preloadInitialPage({
+        page,
+        includeSpiral: pathname === "/",
+        onProgress: setProgress,
+      });
+
       timeline
         .to(logo, { autoAlpha: 1, duration: 0.35, ease: "power2.out" }, 0.15)
-        .to(skip, { autoAlpha: 1, duration: 0.24 }, 0.65)
+        .to([skip, progressBar], { autoAlpha: 1, duration: 0.24 }, 0.45)
         .to(
           logoStrokes,
           {
@@ -193,59 +388,72 @@ export default function Template({ children }) {
           },
           2.6,
         )
-        .to(
-          logo,
-          {
-            scale: 1.02,
-            duration: 0.22,
+        .addLabel("drawn", 3.3);
+
+      Promise.all([drawingPromise, preloader.promise]).then(() => {
+        if (cancelled) return;
+
+        finalTimeline = gsap.timeline();
+        introTimelineRef.current = finalTimeline;
+        finalTimeline
+          .to(progressState, {
+            value: 100,
+            duration: 0.3,
             ease: "power2.out",
-            yoyo: true,
-            repeat: 1,
-          },
-          3.55,
-        )
-        .addLabel("reveal", 4.15)
-        .set(page, { autoAlpha: 1 }, "reveal")
-        .to(
-          intro,
-          { autoAlpha: 0, duration: 0.32, ease: "power2.out" },
-          "reveal",
-        )
-        .to(skip, { autoAlpha: 0, duration: 0.18 }, "reveal")
-        .call(() => setIsFirstRender(false), [], 4.28)
-        .to(
-          logo,
-          {
-            autoAlpha: 0,
-            scale: 1.08,
-            duration: 0.5,
-            ease: "power3.in",
-          },
-          3.98,
-        );
+            onUpdate: renderProgress,
+          })
+          .to(
+            logo,
+            {
+              scale: 1.04,
+              duration: 0.2,
+              ease: "power2.out",
+              yoyo: true,
+              repeat: 1,
+            },
+            0.26,
+          )
+          .to([skip, progressBar], { autoAlpha: 0, duration: 0.18 }, 0.36)
+          .set(page, { autoAlpha: 1 }, 0.58)
+          .to(intro, { autoAlpha: 0, duration: 0.34, ease: "power2.out" }, 0.58)
+          .call(() => setIsFirstRender(false), [], 0.7)
+          .to(
+            logo,
+            {
+              autoAlpha: 0,
+              scale: 1.1,
+              duration: 0.48,
+              ease: "power3.in",
+            },
+            0.48,
+          );
 
-      addOpeningBands(timeline, bands, 4.26, 0.78);
+        addOpeningBands(finalTimeline, bands, 0.72, 0.78);
 
-      timeline
-        .set(
-          [transition, intro],
-          {
-            autoAlpha: 0,
-            pointerEvents: "none",
-            visibility: "hidden",
-          },
-          5.35,
-        )
-        .set(page, { clearProps: "opacity,visibility" }, 5.35)
-        .call(() => setIsIntroComplete(true), [], 5.35)
-        .call(() => setScrollLock(false), [], 5.35);
+        finalTimeline
+          .set(
+            [transition, intro],
+            {
+              autoAlpha: 0,
+              pointerEvents: "none",
+              visibility: "hidden",
+            },
+            1.78,
+          )
+          .set(page, { clearProps: "opacity,visibility" }, 1.78)
+          .call(() => setIsIntroComplete(true), [], 1.78)
+          .call(() => setScrollLock(false), [], 1.78);
+      });
 
       return () => {
+        cancelled = true;
+        preloader.cancel();
+        finalTimeline?.kill();
         introTimelineRef.current = null;
         setScrollLock(false);
       };
     },
-    { scope: rootRef, dependencies: [isImmersiveRoute] },
+    { scope: rootRef, dependencies: [isImmersiveRoute, pathname] },
   );
 
   useGSAP(
@@ -374,10 +582,12 @@ export default function Template({ children }) {
 
   const skipIntro = () => {
     const timeline = introTimelineRef.current;
+    const drawnAt = timeline?.labels?.drawn;
 
-    if (!timeline || timeline.time() >= timeline.labels.reveal) return;
+    if (!timeline || typeof drawnAt !== "number" || timeline.time() >= drawnAt)
+      return;
 
-    timeline.tweenTo("reveal", {
+    timeline.tweenTo("drawn", {
       duration: 0.32,
       ease: "power3.inOut",
       onComplete: () => timeline.play(),
@@ -411,7 +621,7 @@ export default function Template({ children }) {
 
         <p
           ref={transitionLabelRef}
-          className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 font-mono text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[#8e8e8e] opacity-0"
+          className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[#8e8e8e] opacity-0 sm:text-sm"
         >
           ( {getDestinationLabel(destinationUrl)} )
           <span className="ml-1.5 text-blue">*</span>
@@ -470,10 +680,31 @@ export default function Template({ children }) {
           type="button"
           data-intro-skip
           onClick={skipIntro}
-          className="eyebrow absolute bottom-5 right-4 z-10 border-b border-paper/50 pb-1 text-paper opacity-0 transition-colors hover:text-blue sm:bottom-7 sm:right-7"
+          className="eyebrow absolute right-4 top-5 z-10 border-b border-paper/50 pb-1 text-paper opacity-0 transition-colors hover:text-blue sm:right-7 sm:top-7"
         >
           Passer ↘
         </button>
+
+        <div
+          data-intro-progress
+          className="absolute inset-x-4 bottom-5 z-10 opacity-0 sm:inset-x-7 sm:bottom-7"
+        >
+          <div className="mb-3 flex items-end justify-between gap-6 font-mono text-[0.625rem] font-bold uppercase tracking-[0.1em] text-paper/55">
+            <span>Préparation de la visite</span>
+            <span
+              ref={introProgressValueRef}
+              className="text-2xl tracking-[-0.06em] text-paper sm:text-3xl"
+            >
+              00
+            </span>
+          </div>
+          <div className="h-px overflow-hidden bg-paper/25">
+            <span
+              ref={introProgressFillRef}
+              className="block h-full w-0 bg-blue"
+            />
+          </div>
+        </div>
       </div>
 
       <div ref={pageRef}>{children}</div>

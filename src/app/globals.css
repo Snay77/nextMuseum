@@ -113,7 +113,7 @@
       box-shadow 0.7s ease;
   }
 
-  .artwork-float.is-inview .group:hover .artwork-shadow {
+  .artwork-float.is-inview [data-artwork-tilt]:hover .artwork-shadow {
     transform: translateY(0) scale(1.025);
     box-shadow:
       0 3.25rem 7rem rgba(5, 5, 5, 0.34),
@@ -121,10 +121,15 @@
   }
 }
 
-@media (hover: hover) and (pointer: fine) {
-  body.has-museum-cursor,
-  body.has-museum-cursor * {
-    cursor: none;
+@media (hover: hover) and (pointer: fine) and (
+    prefers-reduced-motion: no-preference
+  ) {
+  html.has-museum-cursor,
+  html.has-museum-cursor body,
+  html.has-museum-cursor body *,
+  html.has-museum-cursor canvas {
+    /* biome-ignore lint/complexity/noImportantStyles: prevent WebGL and third-party widgets from restoring the native cursor */
+    cursor: none !important;
   }
 
   .nm-cursor {

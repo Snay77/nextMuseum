@@ -9,6 +9,7 @@ import {
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
 import { useStore } from "../../_lib/store";
+import FavoriteButton from "../favorites/FavoriteButton";
 import { LOCOMOTIVE_REFRESH_EVENT } from "../layout/SmoothScroll";
 import Link from "../ui/Link";
 
@@ -189,16 +190,16 @@ function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
           data-scroll-speed={speed}
           className="artwork-float relative z-20"
         >
-          <Link
-            href={`/paintings/${work.slug}`}
-            aria-label={`Voir l’œuvre ${work.title} de ${work.artist}`}
-            className="group relative z-10 block"
-            onClick={(event) => onArtworkClick(event, work)}
-          >
-            <div className="grid aspect-square w-full place-items-center">
-              <div
-                data-artwork-tilt
-                className={`artwork-tilt relative will-change-transform ${orientationStyles.frame}`}
+          <div className="grid aspect-square w-full place-items-center">
+            <div
+              data-artwork-tilt
+              className={`artwork-tilt group/card relative will-change-transform ${orientationStyles.frame}`}
+            >
+              <Link
+                href={`/paintings/${work.slug}`}
+                aria-label={`Voir l’œuvre ${work.title} de ${work.artist}`}
+                className="relative z-10 block h-full w-full"
+                onClick={(event) => onArtworkClick(event, work)}
               >
                 <div className="artwork-shadow relative h-full w-full">
                   <div
@@ -218,7 +219,7 @@ function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
                         fill
                         sizes="(max-width: 767px) 88vw, 38rem"
                         onLoad={handleImageLoad}
-                        className="object-cover transition-transform duration-1000 ease-out group-hover:scale-[1.025]"
+                        className="object-cover transition-transform duration-1000 ease-out group-hover/card:scale-[1.025]"
                       />
                     </div>
 
@@ -226,15 +227,20 @@ function ArtworkCard({ work, index, onArtworkClick, onImageReady, speed }) {
                       <span className="eyebrow bg-paper/95 px-2.5 py-2 text-ink backdrop-blur-sm">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <span className="grid size-10 translate-y-2 place-items-center rounded-full bg-paper text-lg text-ink opacity-0 transition-[opacity,transform] duration-500 ease-out group-hover:translate-y-0 group-hover:opacity-100 sm:size-12">
+                      <span className="grid size-10 translate-y-2 place-items-center rounded-full bg-paper text-lg text-ink opacity-0 transition-[opacity,transform] duration-500 ease-out group-hover/card:translate-y-0 group-hover/card:opacity-100 sm:size-12">
                         ↗
                       </span>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
+              <FavoriteButton
+                slug={work.slug}
+                revealOnHover
+                className="absolute bottom-3 left-3 z-30 sm:bottom-4 sm:left-4"
+              />
             </div>
-          </Link>
+          </div>
         </div>
 
         <div className="min-h-40 sm:min-h-44">

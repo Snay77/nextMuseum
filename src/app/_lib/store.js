@@ -20,4 +20,12 @@ export const useStore = create((set) => ({
   isHeroAnimationComplete: false,
   setIsHeroAnimationComplete: (isComplete) =>
     set({ isHeroAnimationComplete: isComplete }),
+  favoriteSlugs: [],
+  setFavoriteSlugs: (slugs) => set({ favoriteSlugs: slugs }),
+  setFavoriteSlug: (slug, isFavorite) =>
+    set((state) => ({
+      favoriteSlugs: isFavorite
+        ? Array.from(new Set([...state.favoriteSlugs, slug]))
+        : state.favoriteSlugs.filter((favoriteSlug) => favoriteSlug !== slug),
+    })),
 }));

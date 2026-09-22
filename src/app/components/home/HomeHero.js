@@ -101,7 +101,7 @@ export default function HomeHero() {
           "chrome+=0.38",
         )
         .set(header, { clearProps: "transform,clipPath,opacity,visibility" })
-        .set([backgroundStar, chrome, cta], {
+        .set([backgroundStar, ...chrome, cta].filter(Boolean), {
           clearProps: "transform,clipPath,opacity,visibility",
         })
         .call(() => setIsHeroAnimationComplete(true));

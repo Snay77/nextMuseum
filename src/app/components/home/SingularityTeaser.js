@@ -2,63 +2,62 @@ import Link from "../ui/Link";
 
 export default function SingularityTeaser() {
   return (
-    <section className="relative flex h-[100svh] min-h-[42rem] items-center justify-center overflow-hidden border-t border-paper/20 bg-ink px-3 text-paper sm:px-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(49,85,255,0.22)_0%,rgba(5,5,5,0)_35%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-paper/15" />
-      <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-paper/15" />
+    <section className="relative flex min-h-[100svh] flex-col overflow-hidden border-y border-ink bg-paper px-3 text-ink sm:px-4">
+      <div
+        aria-hidden="true"
+        className="display-type pointer-events-none absolute -right-[0.06em] top-1/2 -translate-y-1/2 select-none text-[min(78vw,58rem)] text-ink/[0.035]"
+      >
+        *
+      </div>
 
-      <div className="absolute inset-x-3 top-5 flex items-start justify-between sm:inset-x-4">
-        <p className="eyebrow text-paper/55">( Expérience 031 )</p>
-        <p className="eyebrow text-right text-paper/55">
-          Collection en fusion
+      <div className="relative z-10 flex items-start justify-between border-b border-ink py-4 sm:py-5">
+        <p className="eyebrow">( Expérience spéciale )</p>
+        <p className="eyebrow text-right text-ink/50">
+          Hors les murs
           <br />
-          Audio · WebGL
+          Son recommandé
         </p>
       </div>
 
-      <div className="relative grid size-[min(84vw,78svh)] max-h-[52rem] max-w-[52rem] place-items-center">
-        <div className="pointer-events-none absolute inset-0 rounded-full border border-paper/20 motion-safe:animate-[spin_36s_linear_infinite]">
-          <span className="absolute left-1/2 top-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue shadow-[0_0_2rem_0.45rem_rgba(49,85,255,0.65)]" />
-        </div>
-        <div className="pointer-events-none absolute inset-[12%] rounded-full border border-dashed border-paper/20 motion-safe:animate-[spin_24s_linear_infinite_reverse]">
-          <span className="absolute bottom-[8%] right-[8%] size-1.5 rounded-full bg-paper" />
-        </div>
-        <div className="pointer-events-none absolute inset-[25%] rounded-full border border-blue/55 motion-safe:animate-[spin_18s_linear_infinite]">
-          <span className="absolute left-0 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue" />
-        </div>
-
-        <div className="relative z-10 flex size-[min(70vw,31rem)] flex-col items-center justify-center rounded-full border border-paper/25 bg-[radial-gradient(circle_at_50%_42%,rgba(49,85,255,0.28),rgba(5,5,5,0.93)_58%)] px-6 text-center shadow-[0_0_8rem_rgba(49,85,255,0.18)] sm:px-10">
-          <span className="display-type mb-5 block text-5xl text-blue sm:text-7xl">
-            *
-          </span>
-          <h2 className="tight-type text-[clamp(2.6rem,7vw,6.8rem)] font-bold uppercase">
+      <div className="relative z-10 grid flex-1 content-center py-12 sm:py-16">
+        <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(17rem,1fr)] lg:gap-12">
+          <h2 className="display-type text-[clamp(3.35rem,10vw,12rem)] uppercase">
             Rencontrez
             <br />
             la singularité
+            <span className="text-blue">*</span>
           </h2>
-          <p className="mt-5 max-w-sm font-mono text-[0.625rem] uppercase leading-relaxed tracking-[0.08em] text-paper/55 sm:mt-7 sm:text-xs">
-            39 œuvres. Une orbite. À 31 secondes, la collection s’effondre sur
-            elle-même.
-          </p>
-          <Link
-            href="/singularity"
-            className="group mt-7 inline-flex items-center gap-5 rounded-full border border-paper bg-paper px-5 py-3 font-mono text-[0.625rem] font-bold uppercase tracking-[0.08em] text-ink transition-[background-color,color,transform] duration-300 hover:scale-105 hover:bg-blue hover:text-white sm:mt-9 sm:px-6 sm:py-4 sm:text-xs"
-          >
-            Entrer dans l’expérience
-            <span className="transition-transform duration-300 group-hover:translate-x-1">
-              ↗
-            </span>
-          </Link>
+
+          <div className="lg:pb-[1.2vw]">
+            <p className="tight-type max-w-[14ch] text-[clamp(2rem,3.5vw,4.25rem)] font-bold">
+              Une œuvre à vivre, pas à regarder.
+            </p>
+            <p className="mt-6 max-w-sm text-base leading-[1.25] text-ink/60 sm:text-lg">
+              La collection quitte les murs. À vous de franchir le seuil.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="absolute inset-x-3 bottom-4 flex items-end justify-between sm:inset-x-4">
-        <p className="eyebrow text-paper/45">NM—SNG/031</p>
-        <p className="eyebrow text-right text-paper/45">
-          Casque recommandé
-          <br />
-          Plein écran
-        </p>
+      <div className="relative z-10 grid border-t border-ink md:grid-cols-[1fr_auto]">
+        <div className="flex items-center justify-between gap-8 py-4 md:pr-8">
+          <p className="eyebrow text-ink/50">NM—SNG</p>
+          <p className="eyebrow hidden text-ink/50 sm:block">
+            Expérience immersive
+          </p>
+        </div>
+
+        <Link
+          href="/singularity"
+          className="group flex min-h-20 items-center justify-between gap-12 border-t border-ink bg-ink px-5 text-paper transition-colors duration-300 hover:bg-blue md:min-w-[24rem] md:border-l md:border-t-0 sm:px-7"
+        >
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.05em]">
+            Entrer dans l’expérience
+          </span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-full border border-paper/50 text-xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:rotate-45 group-hover:scale-110">
+            ↗
+          </span>
+        </Link>
       </div>
     </section>
   );

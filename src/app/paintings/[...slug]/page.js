@@ -5,6 +5,7 @@ import {
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "../../_lib/paintings";
+import FavoriteButton from "../../components/favorites/FavoriteButton";
 import ArtworkCollectionReturn from "../../components/transitions/ArtworkCollectionReturn";
 import ArtworkRailLink from "../../components/transitions/ArtworkRailLink";
 import AnimatedHeroTitle from "../../components/ui/AnimatedHeroTitle";
@@ -43,6 +44,11 @@ export default async function PaintingPage({ params }) {
             title={painting.title}
             listenToHistory
             className="eyebrow absolute left-3 top-3 z-20 inline-flex items-center gap-3 rounded-full border border-ink bg-paper/90 px-4 py-3 backdrop-blur-md transition-colors hover:bg-ink hover:text-paper sm:left-4 sm:top-4"
+          />
+
+          <FavoriteButton
+            slug={painting.slug}
+            className="absolute right-3 top-3 z-20 sm:right-4 sm:top-4"
           />
 
           <div
