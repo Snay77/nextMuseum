@@ -3,6 +3,7 @@ import "mouse-follower/dist/mouse-follower.min.css";
 import "../globals.css";
 import { notFound } from "next/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { getSiteUrl } from "@/app/_lib/seo";
 import FavoriteSync from "@/app/components/favorites/FavoriteSync";
 import Footer from "@/app/components/layout/Footer";
 import Header from "@/app/components/layout/Header";
@@ -18,14 +19,37 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata() {
-  const { t } = await getI18n();
+  const { locale, t } = await getI18n();
+  const title = t("metadata.title");
+  const description = t("metadata.description");
+  const socialImage = {
+    url: "/opengraph-image.png",
+    width: 1200,
+    height: 630,
+    alt: title,
+  };
 
   return {
+    metadataBase: new URL(getSiteUrl()),
     title: {
-      default: t("metadata.title"),
+      default: title,
       template: "%s — New Museum",
     },
-    description: t("metadata.description"),
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: "New Museum",
+      locale: locale === "fr" ? "fr_FR" : "en_US",
+      images: [socialImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [socialImage],
+    },
   };
 }
 
