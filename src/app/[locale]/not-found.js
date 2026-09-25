@@ -5,7 +5,7 @@ import { getI18n } from "@/app/i18n/server";
 export default async function NotFound() {
   const { t } = await getI18n();
   return (
-    <main className="bg-ink text-paper">
+    <main data-not-found-page className="bg-ink text-paper">
       <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-between overflow-hidden px-3 pb-4 pt-5 sm:min-h-[calc(100svh-4rem)] sm:px-4 sm:pt-7">
         <div className="relative z-20 flex items-start justify-between gap-6">
           <p className="eyebrow">{t("notFound.label")}</p>
@@ -34,6 +34,7 @@ export default async function NotFound() {
         </span>
 
         <AnimatedHeroTitle
+          instant
           ariaLabel={t("notFound.aria")}
           lines={[{ id: "error-code", text: "404", star: true }]}
           className="display-type relative z-10 self-center text-center text-[clamp(9rem,31vw,31rem)] [perspective:1000px]"

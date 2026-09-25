@@ -242,7 +242,7 @@ export default async function AccountPage() {
                 {t("account.noTickets")}
               </p>
               <Link
-                href="/billeterie"
+                href="/billetterie"
                 className="eyebrow self-start rounded-full bg-ink px-5 py-3 text-paper hover:bg-blue"
               >
                 {t("account.book")}

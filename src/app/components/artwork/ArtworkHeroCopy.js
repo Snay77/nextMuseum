@@ -68,13 +68,9 @@ export default function ArtworkHeroCopy({ slug, className = "", children }) {
     },
     {
       scope: copyRef,
-      dependencies: [
-        artworkNavigation?.fromSlug,
-        isFirstRender,
-        isTransitionActive,
-        slug,
-        transitionType,
-      ],
+      // Keep the reveal tied to the artwork and active transition state only.
+      // Clearing rail metadata after arrival must not replay the animation.
+      dependencies: [isFirstRender, isTransitionActive, slug],
     },
   );
 

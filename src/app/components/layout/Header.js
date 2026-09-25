@@ -51,7 +51,7 @@ export default async function Header() {
           </Link>
           <Link
             className="eyebrow rounded-full bg-ink px-3 py-2 text-paper transition-colors hover:bg-blue sm:px-4"
-            href="/billeterie"
+            href="/billetterie"
           >
             {t("common.tickets")} ↗
           </Link>

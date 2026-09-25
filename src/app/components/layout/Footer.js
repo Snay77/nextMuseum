@@ -28,7 +28,7 @@ export default async function Footer() {
             <Link className="block hover:underline" href="/agenda">
               {t("common.agenda")}
             </Link>
-            <Link className="block hover:underline" href="/billeterie">
+            <Link className="block hover:underline" href="/billetterie">
               {t("common.ticketing")}
             </Link>
             <Link className="block hover:underline" href="/contact">

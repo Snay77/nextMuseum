@@ -714,7 +714,7 @@ export default function ArtSpiral({ works }) {
       const flattenState = { progress: 0 };
       const focusStart = 0.08;
       const focusDuration = isMobile ? 0.9 : 1.08;
-      const blankPauseDuration = 0.65;
+      const blankPauseDuration = isMobile ? 0.65 : 0.15;
       const backgroundFadeDuration = 0.5;
       const backgroundFadeStart = focusStart + focusDuration * 0.2;
       const transformationEnd = focusStart + focusDuration;

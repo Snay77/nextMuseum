@@ -417,7 +417,7 @@ const fr = {
     shortcutItems: [
       ["Collection", "VOIR LES ŒUVRES", "/paintings"],
       ["Programmation", "EXPLORER L’AGENDA", "/agenda"],
-      ["Votre visite", "PRENDRE UN BILLET", "/billeterie"],
+      ["Votre visite", "PRENDRE UN BILLET", "/billetterie"],
     ],
   },
   ticketing: {
@@ -470,12 +470,13 @@ const fr = {
       jobseeker: ["Demandeur d’emploi", "Sur justificatif"],
       "reduced-mobility": ["Entrée PMR", "Sur justificatif"],
       senior: ["Entrée senior", "À partir de 65 ans"],
-      group: ["Tarif groupe", "Plus de 10 personnes"],
+      group: ["Tarif groupe", "À partir de 10 personnes"],
       "under-five": ["Moins de 5 ans", "Sur justificatif"],
     },
     optionTypes: {
       audioguide: ["Audioguide", "Disponible en 6 langues"],
       "paper-guide": ["Guide papier", "Édition de la collection"],
+      "museum-map": ["Plan du musée", "Gratuit et fourni à l’accueil"],
     },
   },
   singularity: {

@@ -116,7 +116,7 @@ export default async function ContactPage() {
             {t("contact.viewAgenda")}
           </Link>
           <Link
-            href="/billeterie"
+            href="/billetterie"
             className="rounded-full bg-blue px-6 py-3 font-mono text-xs font-bold uppercase text-white transition-transform hover:scale-105"
           >
             {t("common.ticketing")} ↗

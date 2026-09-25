@@ -219,7 +219,7 @@ function EventRow({ event, index, expanded, onToggle }) {
                 {event.duration}
               </p>
               <Link
-                href="/billeterie"
+                href="/billetterie"
                 className="mt-4 inline-flex rounded-full bg-blue px-5 py-3 text-[0.65rem] font-bold uppercase tracking-[0.04em] text-white transition-transform hover:scale-105"
               >
                 {t("agenda.reserve")}
@@ -397,7 +397,7 @@ export default function AgendaExperience() {
                 <p>75 minutes</p>
               </div>
               <Link
-                href="/billeterie"
+                href="/billetterie"
                 className="col-span-2 mt-2 inline-flex w-fit rounded-full bg-ink px-5 py-3 text-paper transition-colors hover:bg-blue"
               >
                 {t("agenda.takeTicket")}
@@ -491,7 +491,7 @@ export default function AgendaExperience() {
             </div>
           ))}
           <Link
-            href="/billeterie"
+            href="/billetterie"
             className="group flex items-end justify-between bg-ink p-3 text-paper transition-colors hover:bg-paper hover:text-ink sm:p-4"
           >
             <span className="tight-type text-[clamp(2.4rem,5vw,5rem)] font-bold">

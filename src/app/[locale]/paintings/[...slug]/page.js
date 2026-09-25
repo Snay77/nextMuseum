@@ -1,7 +1,9 @@
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import {
   getObject,
   getObjects,
+  getSimilarPaintings,
   getWikimediaThumbnail,
   isWikimediaThumbnail,
 } from "@/app/_lib/paintings";
@@ -24,6 +26,8 @@ export default async function PaintingPage({ params }) {
     getObject(slug.join("/")),
     getObjects(),
   ]);
+  if (!painting) notFound();
+
   const gallery = painting.gallery?.filter(Boolean) ?? [];
   const detailImages = gallery.filter(
     (image, index) =>
@@ -32,11 +36,7 @@ export default async function PaintingPage({ params }) {
   const description = descriptionParagraphs(
     painting.description ?? t("artwork.fallbackDescription"),
   );
-  const otherPaintings = objects
-    .filter(
-      (object) => object.id !== painting.id && object.slug && object.image,
-    )
-    .slice(0, 3);
+  const otherPaintings = getSimilarPaintings(painting, objects);
 
   return (
     <main data-artwork-detail-page className="min-h-screen">

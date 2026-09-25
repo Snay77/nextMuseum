@@ -1,5 +1,8 @@
 import { auth } from "@/app/_lib/auth";
-import { calculateBooking } from "@/app/_lib/ticketing";
+import {
+  calculateBooking,
+  hasValidTicketQuantities,
+} from "@/app/_lib/ticketing";
 import { db } from "@/db";
 import { ticketBooking } from "@/db/schema";
 
@@ -35,6 +38,16 @@ export async function POST(request) {
   if (!isValidVisitDate(payload.visitDate)) {
     return Response.json(
       { error: "Cette date de visite n’est pas disponible." },
+      { status: 400 },
+    );
+  }
+
+  if (!hasValidTicketQuantities(payload.quantities)) {
+    return Response.json(
+      {
+        error:
+          "Les quantités doivent être comprises entre 0 et 20, avec au moins 10 personnes pour le tarif groupe.",
+      },
       { status: 400 },
     );
   }

@@ -99,7 +99,7 @@ export default async function Home() {
               </Link>
               <Link
                 className="inline-flex rounded-full border border-ink px-6 py-3 text-sm font-bold transition-colors hover:bg-ink hover:text-paper"
-                href="/billeterie"
+                href="/billetterie"
               >
                 {t("home.today.prepare")}
               </Link>

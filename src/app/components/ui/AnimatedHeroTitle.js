@@ -39,6 +39,7 @@ export default function AnimatedHeroTitle({
   starClassName = "text-blue",
   delay = 0.15,
   active = true,
+  instant = false,
   ariaLabel,
 }) {
   const titleRef = useRef(null);
@@ -71,6 +72,14 @@ export default function AnimatedHeroTitle({
         isTransitionActive &&
         transitionType === "artwork-rail" &&
         artworkNavigation?.fromSlug === artworkSlug;
+
+      if (instant) {
+        gsap.set(animatedElements, {
+          autoAlpha: 1,
+          clearProps: "transform",
+        });
+        return;
+      }
 
       if (isRailSource) return;
 
@@ -153,13 +162,15 @@ export default function AnimatedHeroTitle({
     },
     {
       scope: titleRef,
+      // The rail transition clears its navigation metadata after the reveal
+      // has started. Those cleanup values must not restart this timeline.
       dependencies: [
         active,
-        artworkNavigation?.fromSlug,
+        accessibleLabel,
         delay,
+        instant,
         isFirstRender,
         isTransitionActive,
-        transitionType,
       ],
     },
   );

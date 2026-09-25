@@ -423,7 +423,7 @@ const en = {
     shortcutItems: [
       ["Collection", "VIEW THE ARTWORKS", "/paintings"],
       ["Programme", "EXPLORE THE AGENDA", "/agenda"],
-      ["Your visit", "GET A TICKET", "/billeterie"],
+      ["Your visit", "GET A TICKET", "/billetterie"],
     ],
   },
   ticketing: {
@@ -477,12 +477,13 @@ const en = {
       jobseeker: ["Job seeker", "Proof required"],
       "reduced-mobility": ["Accessible admission", "Proof required"],
       senior: ["Senior admission", "Ages 65 and over"],
-      group: ["Group rate", "More than 10 people"],
+      group: ["Group rate", "From 10 people"],
       "under-five": ["Under 5", "Proof required"],
     },
     optionTypes: {
       audioguide: ["Audio guide", "Available in 6 languages"],
       "paper-guide": ["Printed guide", "Collection edition"],
+      "museum-map": ["Museum map", "Free and available at reception"],
     },
   },
   singularity: {

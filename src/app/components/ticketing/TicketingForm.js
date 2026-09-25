@@ -6,6 +6,7 @@ import { useSession } from "@/app/_lib/auth-client";
 import {
   TICKET_OPTIONS as baseOptions,
   TICKET_TYPES as baseTickets,
+  normalizeTicketQuantity,
   PENDING_TICKET_KEY,
 } from "@/app/_lib/ticketing";
 import { useI18n } from "@/app/i18n/I18nProvider";
@@ -258,13 +259,7 @@ export default function TicketingForm({ initialDate }) {
         Object.fromEntries(
           tickets.map((ticket) => [
             ticket.id,
-            Math.max(
-              0,
-              Math.min(
-                20,
-                Number.parseInt(pending.quantities?.[ticket.id], 10) || 0,
-              ),
-            ),
+            normalizeTicketQuantity(ticket.id, pending.quantities?.[ticket.id]),
           ]),
         ),
       );
@@ -301,10 +296,24 @@ export default function TicketingForm({ initialDate }) {
   );
 
   function changeQuantity(id, amount) {
-    setQuantities((current) => ({
-      ...current,
-      [id]: Math.max(0, current[id] + amount),
-    }));
+    setQuantities((current) => {
+      const ticket = tickets.find((candidate) => candidate.id === id);
+      const currentQuantity = normalizeTicketQuantity(id, current[id]);
+      let nextQuantity = currentQuantity + amount;
+
+      if (ticket?.minimumQuantity) {
+        if (amount > 0 && currentQuantity === 0) {
+          nextQuantity = ticket.minimumQuantity;
+        } else if (amount < 0 && currentQuantity === ticket.minimumQuantity) {
+          nextQuantity = 0;
+        }
+      }
+
+      return {
+        ...current,
+        [id]: normalizeTicketQuantity(id, nextQuantity),
+      };
+    });
   }
 
   async function handleBooking() {
@@ -320,7 +329,7 @@ export default function TicketingForm({ initialDate }) {
     if (!session) {
       sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
       router.push(
-        `${localizeHref("/login", locale)}?callbackUrl=%2Fbilleterie%3Fresume%3D1`,
+        `${localizeHref("/login", locale)}?callbackUrl=%2Fbilletterie%3Fresume%3D1`,
       );
       return;
     }
@@ -341,7 +350,7 @@ export default function TicketingForm({ initialDate }) {
       if (response.status === 401) {
         sessionStorage.setItem(PENDING_TICKET_KEY, JSON.stringify(selection));
         router.push(
-          `${localizeHref("/login", locale)}?callbackUrl=%2Fbilleterie%3Fresume%3D1`,
+          `${localizeHref("/login", locale)}?callbackUrl=%2Fbilletterie%3Fresume%3D1`,
         );
         return;
       }
@@ -435,7 +444,7 @@ export default function TicketingForm({ initialDate }) {
           <h2 className="tight-type mb-6 text-4xl font-bold sm:text-6xl">
             {t("ticketing.moreVisit")}
           </h2>
-          <div className="grid border-l border-t border-ink sm:grid-cols-2">
+          <div className="grid border-l border-t border-ink sm:grid-cols-3">
             {options.map((option) => {
               const active = Boolean(selectedOptions[option.id]);
               return (
@@ -458,7 +467,11 @@ export default function TicketingForm({ initialDate }) {
                           ? t("ticketing.added")
                           : t("ticketing.addOption")}
                       </span>
-                      <span className="eyebrow">+ {option.price} €</span>
+                      <span className="eyebrow">
+                        {option.price === 0
+                          ? t("ticketing.free")
+                          : `+ ${option.price} €`}
+                      </span>
                     </span>
                     <span>
                       <span className="block text-2xl font-bold tracking-[-0.04em]">
@@ -523,7 +536,11 @@ export default function TicketingForm({ initialDate }) {
                 className="flex justify-between gap-4 text-sm"
               >
                 <span>{option.label}</span>
-                <span>{option.price * ticketCount} €</span>
+                <span>
+                  {option.price === 0
+                    ? t("ticketing.free")
+                    : `${option.price * ticketCount} €`}
+                </span>
               </div>
             ))}
         </div>

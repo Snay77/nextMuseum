@@ -28,8 +28,9 @@ export const TICKET_TYPES = [
   {
     id: "group",
     label: "Tarif groupe",
-    detail: "Plus de 10 personnes",
+    detail: "À partir de 10 personnes",
     price: 15,
+    minimumQuantity: 10,
   },
   {
     id: "under-five",
@@ -52,18 +53,57 @@ export const TICKET_OPTIONS = [
     detail: "Édition de la collection",
     price: 4,
   },
+  {
+    id: "museum-map",
+    label: "Plan du musée",
+    detail: "Gratuit et fourni à l’accueil",
+    price: 0,
+  },
 ];
 
 export const PENDING_TICKET_KEY = "new-museum:pending-ticket";
+export const MAX_TICKET_QUANTITY = 20;
+
+export function normalizeTicketQuantity(ticketId, value) {
+  const ticket = TICKET_TYPES.find((candidate) => candidate.id === ticketId);
+  const quantity = Math.max(
+    0,
+    Math.min(MAX_TICKET_QUANTITY, Number.parseInt(value, 10) || 0),
+  );
+
+  if (ticket?.minimumQuantity && quantity > 0) {
+    return Math.max(ticket.minimumQuantity, quantity);
+  }
+
+  return quantity;
+}
+
+export function hasValidTicketQuantities(quantities) {
+  return TICKET_TYPES.every((ticket) => {
+    const rawQuantity = quantities?.[ticket.id] ?? 0;
+    const quantity = Number(rawQuantity);
+
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 0 ||
+      quantity > MAX_TICKET_QUANTITY
+    ) {
+      return false;
+    }
+
+    return (
+      !ticket.minimumQuantity ||
+      quantity === 0 ||
+      quantity >= ticket.minimumQuantity
+    );
+  });
+}
 
 export function calculateBooking(quantities, selectedOptions) {
   const normalizedTickets = TICKET_TYPES.map((ticket) => ({
     id: ticket.id,
     label: ticket.label,
-    quantity: Math.max(
-      0,
-      Math.min(20, Number.parseInt(quantities?.[ticket.id], 10) || 0),
-    ),
+    quantity: normalizeTicketQuantity(ticket.id, quantities?.[ticket.id]),
     unitPrice: ticket.price,
   })).filter((ticket) => ticket.quantity > 0);
   const ticketCount = normalizedTickets.reduce(

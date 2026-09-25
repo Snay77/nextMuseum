@@ -22,6 +22,9 @@ const getVisibleBands = (container) =>
     container?.querySelectorAll("[data-transition-band]") ?? [],
   ).filter((band) => window.getComputedStyle(band).display !== "none");
 
+const hasNotFoundPage = (page) =>
+  Boolean(page?.querySelector("[data-not-found-page]"));
+
 const setScrollLock = (isLocked) => {
   const keepHeroLocked =
     !isLocked &&
@@ -39,7 +42,7 @@ const getDestinationLabel = (url, t) => {
   if (pathname === "/paintings") return t("template.destination.collection");
   if (pathname === "/agenda") return t("template.destination.agenda");
   if (pathname === "/contact") return t("template.destination.contact");
-  if (pathname === "/billeterie") return t("template.destination.ticketing");
+  if (pathname === "/billetterie") return t("template.destination.ticketing");
   if (pathname.startsWith("/paintings/"))
     return t("template.destination.artwork");
 
@@ -271,8 +274,9 @@ export default function Template({ children }) {
       const intro = introRef.current;
       const page = pageRef.current;
       const bands = getVisibleBands(bandsRef.current);
+      const isNotFoundPage = hasNotFoundPage(page);
 
-      if (isImmersiveRoute) {
+      if (isImmersiveRoute || isNotFoundPage) {
         setScrollLock(false);
         gsap.set(page, { autoAlpha: 1, clearProps: "all" });
         gsap.set([transition, intro], {
@@ -280,8 +284,13 @@ export default function Template({ children }) {
           pointerEvents: "none",
           visibility: "hidden",
         });
+        gsap.set(bands, { scaleY: 0 });
         setIsFirstRender(false);
         setIsIntroComplete(true);
+        if (isNotFoundPage) {
+          setIsTransitionActive(false);
+          setDestinationUrl("");
+        }
         return;
       }
 
@@ -561,7 +570,10 @@ export default function Template({ children }) {
   useGSAP(
     // entrée de page
     () => {
+      const page = pageRef.current;
+
       if (
+        hasNotFoundPage(page) ||
         isImmersiveRoute ||
         isArtworkTransition ||
         !isTransitionActive ||
@@ -574,7 +586,6 @@ export default function Template({ children }) {
       const transition = transitionRef.current;
       const bands = getVisibleBands(bandsRef.current);
       const label = transitionLabelRef.current;
-      const page = pageRef.current;
       const pageTitle = page.querySelector("h1");
       const timeline = gsap.timeline();
 
