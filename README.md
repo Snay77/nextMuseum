@@ -69,6 +69,20 @@ npm run build    # créer le build de production
 npm run start    # lancer le build de production
 ```
 
+## Retour critique sur Next.js
+
+### Points positifs
+
+- J’ai trouvé l’App Router pratique et assez logique : les dossiers représentent directement les routes, tandis que `[slug]`, `[locale]` et les groupes comme `(auth)` permettent de construire une arborescence claire.
+- Les Server Components permettent de récupérer les données directement côté serveur, ce qui simplifie le chargement initial et améliore le référencement.
+- Les composants intégrés comme `Image` et `Link`, la gestion des metadata et le déploiement sur Vercel permettent d’avoir rapidement une base optimisée.
+
+### Points négatifs
+
+- La séparation entre Server Components et Client Components n’est pas toujours évidente, surtout avec GSAP, Three.js, Zustand et les interactions utilisateur.
+- Les transitions de pages très personnalisées sont plus complexes à réaliser, car il faut travailler autour du système de navigation de Next.js.
+- Next.js repose sur beaucoup de conventions implicites. Un fichier placé au mauvais endroit ou une mauvaise configuration du cache peut provoquer un comportement difficile à comprendre.
+
 ## À propos du projet
 
 New Museum est avant tout un terrain d’expérimentation autour du web créatif, de l’animation et de la mise en scène numérique des œuvres. Le site continue d’être amélioré : les animations, les performances, l’accessibilité et certaines fonctionnalités sont encore amenées à évoluer.
